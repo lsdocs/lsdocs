@@ -134,6 +134,12 @@ enum Kind {
 pub(crate) struct PluginClient {
     /// The name from the site config.
     pub name: String,
+    /// The name it reported (which may differ from the config's name).
+    pub plugin_name: String,
+    /// The version it reported.
+    pub version: String,
+    /// Its `options` from the site config.
+    pub options: Value,
     /// What it said it can do.
     pub capabilities: Capabilities,
     /// The `files` globs from the site config, if any.
@@ -159,6 +165,8 @@ impl PluginClient {
         let mut init = init.clone();
         init.options = entry.options.clone();
 
+        let version;
+        let plugin_name;
         let (kind, capabilities) = match &entry.launch {
             Launch::Builtin { name: builtin } => {
                 let plugin = builtins
@@ -173,7 +181,9 @@ impl PluginClient {
                     events: events.clone(),
                 });
                 let ctx = Context::new(sink, &init);
-                let capabilities = plugin.capabilities();
+                let capabilities = plugin.capabilities_for(&init);
+                version = plugin.info().version;
+                plugin_name = plugin.info().name;
                 (
                     Kind::InProcess {
                         plugin: Box::new(plugin),
@@ -242,6 +252,8 @@ impl PluginClient {
                     .await
                     .map_err(|e| HostError::handshake(&name, e.to_string()))?;
                 tracing::debug!(plugin = %name, remote = %result.plugin.name, version = %result.plugin.version, "plugin started");
+                version = result.plugin.version;
+                plugin_name = result.plugin.name;
                 (
                     Kind::Remote {
                         peer,
@@ -258,6 +270,9 @@ impl PluginClient {
             .map_or_else(default_concurrency, |n| (n as usize).max(1));
         Ok(Self {
             name,
+            version,
+            plugin_name,
+            options: entry.options.clone(),
             capabilities,
             files,
             permits: Semaphore::new(limit),

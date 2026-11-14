@@ -42,6 +42,8 @@ fn sample_site_output() {
         // An absolute output dir replaces the config's relative one.
         .arg("--output-dir")
         .arg(&out)
+        // Leave no cache in the source tree.
+        .arg("--no-cache")
         .env_remove("LSDOCS_LOG")
         .output()
         .unwrap();

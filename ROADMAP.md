@@ -521,10 +521,30 @@ site's navigation into every page's metadata, which then goes to every
 later plugin and the renderer. Sharing site-wide data once (rather than
 per page) is an open question, below.
 
-### 7b: Cache
-- [ ] Content-hash cache: parse and render results keyed by input hash and
-      plugin name + version (+ options), so an unchanged page is not
-      reparsed or rerendered.
+### 7b: Cache (done)
+- [x] `Capabilities.cache` (new, optional): a plugin opts in to caching by
+      declaring a key that covers every input besides the request, the
+      site settings and its name, version and options (decided: opt-in, so
+      a third-party plugin that reads other files is never cached wrongly).
+      The SDK has `Plugin::cacheable()` and `Plugin::cache_key(..)`; all
+      builtins opt in, `render-html` with a digest of its custom template.
+- [x] The host caches parse, collect, apply and render results in
+      `.lsdocs-cache/` at the site root (blake3 keys, one MessagePack file
+      per entry, entries the last build did not use are deleted). Apply
+      results are keyed on the page plus a digest of everything collected
+      in that pass, so an edit that changes no collected data leaves the
+      other pages' results valid. `lsdocs build --no-cache` bypasses it;
+      `lsdocs init` writes a `.gitignore` for `site/` and the cache.
+- [x] Cached results replay the diagnostics they carry; logs, progress and
+      notified diagnostics are not replayed.
+
+Results (201 pages, release build, median of 3): in-process 519 ms ->
+490 ms fully cached; stdio 860 ms -> 606 ms. In-process, the plugin work
+the cache saves is small next to file I/O on Windows (about 1600 cache
+files read and 201 outputs written) and encoding pages for their keys.
+Possible next steps, if it matters: one cache file instead of one per
+entry, not rewriting unchanged outputs, and keeping everything in memory
+in `lsdocs serve` (7c).
 
 ### 7c: Incremental rebuilds and `lsdocs serve`
 - [ ] A dependency graph, including cross-document dependencies from the

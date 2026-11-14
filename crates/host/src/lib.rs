@@ -42,9 +42,11 @@ use lsdocs_protocol::{
     RenderSiteParams, RenderedPage, Severity, SiteInfo, TransformCollectParams,
 };
 
+mod cache;
 mod normalize;
 mod plugin;
 
+pub use cache::DIR as CACHE_DIR;
 pub use normalize::slug;
 
 pub use plugin::Builtins;
@@ -180,11 +182,27 @@ impl std::error::Error for HostError {
     }
 }
 
+/// How to build.
+#[derive(Debug, Clone)]
+pub struct BuildOptions {
+    /// Reuse parse and render results from earlier builds, kept in
+    /// [`CACHE_DIR`] at the site root. On by default.
+    pub cache: bool,
+}
+
+impl Default for BuildOptions {
+    fn default() -> Self {
+        Self { cache: true }
+    }
+}
+
 /// What a build did.
 #[derive(Debug, Default)]
 pub struct BuildReport {
     /// Documents parsed and rendered.
     pub documents: usize,
+    /// Parse and render results reused from the cache.
+    pub cached: usize,
     /// Files copied unchanged.
     pub assets: usize,
     /// Files written, relative to the output directory, with `/` separators.
@@ -284,6 +302,7 @@ pub async fn build(
     config: &Config,
     root: &Path,
     builtins: &Builtins,
+    options: &BuildOptions,
 ) -> Result<BuildReport, HostError> {
     let events = Events::default();
     let files = discover(&root.join(&config.source_dir))?;
@@ -316,8 +335,11 @@ pub async fn build(
         }
     }
 
+    let cache = options
+        .cache
+        .then(|| Arc::new(cache::Cache::new(cache::dir(root), &init.site)));
     let report = match result {
-        Ok(()) => run_pipeline(config, root, &init.site.files, &plugins).await,
+        Ok(()) => run_pipeline(config, root, &init.site.files, &plugins, cache.clone()).await,
         Err(e) => Err(e),
     };
 
@@ -334,6 +356,10 @@ pub async fn build(
     }
 
     let mut report = report?;
+    if let Some(cache) = cache {
+        report.cached = cache.hits();
+        cache.prune();
+    }
     // Out-of-band diagnostics arrive as notifications; collect them last so
     // none sent before shutdown are missed.
     report.diagnostics.extend(events.take_diagnostics());
@@ -345,6 +371,7 @@ async fn run_pipeline(
     root: &Path,
     files: &[String],
     plugins: &[Arc<PluginClient>],
+    cache: Option<Arc<cache::Cache>>,
 ) -> Result<BuildReport, HostError> {
     let mut report = BuildReport::default();
     let source_dir = root.join(&config.source_dir);
@@ -369,8 +396,10 @@ async fn run_pipeline(
     }
     let parsed = in_parallel(to_parse, {
         let source_dir = source_dir.clone();
+        let cache = cache.clone();
         move |(source, parser)| {
             let path = source_dir.join(&source);
+            let cache = cache.clone();
             async move {
                 let text = match std::fs::read_to_string(&path) {
                     Ok(text) => text,
@@ -379,12 +408,23 @@ async fn run_pipeline(
                     }
                     Err(e) => return Err(HostError::io(path, e)),
                 };
+                let key = cache
+                    .as_ref()
+                    .and_then(|c| c.key(&parser, "parse", &[source.as_bytes(), text.as_bytes()]));
+                if let (Some(cache), Some(key)) = (&cache, &key)
+                    && let Some(result) = cache.get(key)
+                {
+                    return Ok(Parsed::Document(source, text, result));
+                }
                 let result = parser
                     .parse(ParseParams {
                         source: source.clone(),
                         text: text.clone(),
                     })
                     .await?;
+                if let (Some(cache), Some(key)) = (&cache, &key) {
+                    cache.put(key, &result);
+                }
                 Ok(Parsed::Document(source, text, result))
             }
         }
@@ -427,16 +467,26 @@ async fn run_pipeline(
         let selected: Vec<usize> = (0..documents.len())
             .filter(|&i| plugin.wants_document(&documents[i]))
             .collect();
+        // Apply results depend on everything collected, so their cache keys
+        // include a digest of it.
+        let mut collected_digest = Vec::new();
         if collects {
             let inputs = selected.iter().map(|&i| documents[i].clone()).collect();
             let results = in_parallel(inputs, {
                 let plugin = Arc::clone(plugin);
+                let cache = cache.clone();
                 move |document: Document| {
                     let plugin = Arc::clone(&plugin);
+                    let cache = cache.clone();
                     async move {
                         let source = document.source.clone();
-                        let result = plugin.collect(TransformCollectParams { document }).await;
-                        result.map(|r| (source, r))
+                        let key = cache::document_key(&cache, &plugin, "collect", &document, &[]);
+                        if let Some(result) = cache::get(&cache, &key) {
+                            return Ok((source, result));
+                        }
+                        let result = plugin.collect(TransformCollectParams { document }).await?;
+                        cache::put(&cache, &key, &result);
+                        Ok((source, result))
                     }
                 }
             })
@@ -447,8 +497,13 @@ async fn run_pipeline(
                 add_diagnostics(&mut report, &source, result.diagnostics);
                 data.insert(source, result.data);
             }
-            plugin.set_collected(Value::Object(data)).await?;
+            let collected = Value::Object(data);
+            if cache.is_some() {
+                collected_digest = cache::digest(&collected);
+            }
+            plugin.set_collected(collected).await?;
         }
+        let collected_digest = Arc::new(collected_digest);
         let inputs: Vec<(usize, Document)> = selected
             .iter()
             .map(|&i| {
@@ -458,9 +513,20 @@ async fn run_pipeline(
             .collect();
         let results = in_parallel(inputs, {
             let plugin = Arc::clone(plugin);
+            let cache = cache.clone();
             move |(i, document): (usize, Document)| {
                 let plugin = Arc::clone(&plugin);
-                async move { plugin.apply(document).await.map(|r| (i, r)) }
+                let cache = cache.clone();
+                let digest = Arc::clone(&collected_digest);
+                async move {
+                    let key = cache::document_key(&cache, &plugin, "apply", &document, &digest);
+                    if let Some(result) = cache::get(&cache, &key) {
+                        return Ok((i, result));
+                    }
+                    let result = plugin.apply(document).await?;
+                    cache::put(&cache, &key, &result);
+                    Ok((i, result))
+                }
             }
         })
         .await;
@@ -500,9 +566,11 @@ async fn run_pipeline(
         let results = in_parallel(documents, {
             let renderer = Arc::clone(renderer);
             let format = format.clone();
+            let cache = cache.clone();
             move |document: Document| {
                 let renderer = Arc::clone(&renderer);
                 let format = format.clone();
+                let cache = cache.clone();
                 async move {
                     let source = document.source.clone();
                     let metadata = if site {
@@ -510,8 +578,19 @@ async fn run_pipeline(
                     } else {
                         Default::default()
                     };
-                    let result = renderer.render(RenderParams { document, format }).await;
-                    result.map(|r| (source, metadata, r))
+                    let key = cache::document_key(
+                        &cache,
+                        &renderer,
+                        "render",
+                        &document,
+                        format.as_bytes(),
+                    );
+                    if let Some(result) = cache::get(&cache, &key) {
+                        return Ok((source, metadata, result));
+                    }
+                    let result = renderer.render(RenderParams { document, format }).await?;
+                    cache::put(&cache, &key, &result);
+                    Ok((source, metadata, result))
                 }
             }
         })

@@ -185,6 +185,57 @@ fn in_process_and_out_of_process_builds_match() {
 }
 
 #[test]
+fn the_cache_skips_unchanged_pages() {
+    let site = temp_dir("cache");
+    write_content(&site);
+    let config_path = site.join("lsdocs.toml");
+    write(&config_path, &config(None));
+    let config_arg = config_path.to_string_lossy().into_owned();
+    let build = |extra: &[&str]| {
+        let mut args = vec!["build", "--config", config_arg.as_str()];
+        args.extend_from_slice(extra);
+        let output = lsdocs(&args);
+        assert!(output.status.success(), "{}", stderr(&output));
+        (read_tree(&site.join("site")), stderr(&output))
+    };
+
+    // How many results the build log says came from the cache.
+    let hits = |log: &str| -> usize {
+        log.split(" result(s) from the cache")
+            .next()
+            .filter(|s| s.len() < log.len())
+            .and_then(|s| s.rsplit('(').next())
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(0)
+    };
+    let (first, log) = build(&[]);
+    assert_eq!(hits(&log), 0, "{log}");
+    assert!(site.join(".lsdocs-cache").is_dir());
+    // Unchanged: every result comes from the cache, and the site is the same.
+    let (second, log) = build(&[]);
+    let all = hits(&log);
+    assert!(all > 0, "{log}");
+    assert_eq!(first, second);
+    // Diagnostics in cached results are reported again.
+    assert!(log.contains("warning[broken-link]"), "{log}");
+
+    // A reworded page is processed again; the other page's results, whose
+    // inputs did not change, still come from the cache.
+    write(
+        &site.join("docs/guide/intro.md"),
+        "# Intro\n\nChanged. [Gone](missing.md).\n",
+    );
+    let (third, log) = build(&[]);
+    assert!((1..all).contains(&hits(&log)), "{all} vs. {log}");
+    let intro = String::from_utf8(third["guide/intro.html"].clone()).unwrap();
+    assert!(intro.contains("Changed."), "{intro}");
+
+    let (_, log) = build(&["--no-cache"]);
+    assert_eq!(hits(&log), 0, "{log}");
+    let _ = std::fs::remove_dir_all(&site);
+}
+
+#[test]
 fn broken_links_are_warnings() {
     let (_, output) = build_site("broken-link", None, &[]);
     let log = stderr(&output);

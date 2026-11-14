@@ -11,12 +11,14 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+blake3.workspace = true
 futures-util = { workspace = true, features = ["alloc"] }
 globset.workspace = true
 lsdocs-config.workspace = true
 lsdocs-plugin-sdk.workspace = true
 lsdocs-protocol.workspace = true
 lsdocs-rpc.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt", "fs", "process", "time", "sync", "macros"] }
 tracing.workspace = true

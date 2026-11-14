@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use lsdocs_config::{Config, Overrides};
-use lsdocs_host::Builtins;
+use lsdocs_host::{BuildOptions, Builtins};
 use tracing_subscriber::EnvFilter;
 
 /// Build documentation sites with language-agnostic plugins.
@@ -40,6 +40,10 @@ enum Commands {
         /// Override `site.base_url`.
         #[arg(long)]
         base_url: Option<String>,
+        /// Don't reuse or store results in the build cache
+        /// (`.lsdocs-cache/` next to the config).
+        #[arg(long)]
+        no_cache: bool,
     },
     /// Create a starter site: `lsdocs.toml` and `docs/index.md`.
     Init {
@@ -83,6 +87,7 @@ fn main() -> ExitCode {
             source_dir,
             output_dir,
             base_url,
+            no_cache,
         } => runtime.block_on(build(
             &config,
             Overrides {
@@ -90,6 +95,7 @@ fn main() -> ExitCode {
                 output_dir,
                 base_url,
             },
+            &BuildOptions { cache: !no_cache },
         )),
         Commands::Init { dir } => init(&dir),
         Commands::Plugin { name } => runtime.block_on(serve_builtin(&name)),
@@ -127,7 +133,11 @@ fn init_logging(verbose: u8, trace_rpc: bool) {
         .init();
 }
 
-async fn build(config_path: &Path, cli: Overrides) -> Result<ExitCode, String> {
+async fn build(
+    config_path: &Path,
+    cli: Overrides,
+    options: &BuildOptions,
+) -> Result<ExitCode, String> {
     let text = std::fs::read_to_string(config_path)
         .map_err(|e| format!("{}: {e}", config_path.display()))?;
     let mut config =
@@ -139,14 +149,18 @@ async fn build(config_path: &Path, cli: Overrides) -> Result<ExitCode, String> {
         _ => PathBuf::from("."),
     };
 
-    let report = lsdocs_host::build(&config, &root, &builtins())
+    let report = lsdocs_host::build(&config, &root, &builtins(), options)
         .await
         .map_err(|e| e.to_string())?;
     for d in &report.diagnostics {
         eprintln!("{}", report.format_diagnostic(d));
     }
+    let cached = match report.cached {
+        0 => String::new(),
+        n => format!(" ({n} result(s) from the cache)"),
+    };
     eprintln!(
-        "built {} document(s) and copied {} asset(s) into {}",
+        "built {} document(s) and copied {} asset(s) into {}{cached}",
         report.documents,
         report.assets,
         root.join(&config.output_dir).display()
@@ -204,6 +218,10 @@ fn init(dir: &Path) -> Result<ExitCode, String> {
     };
     write(&config, STARTER_CONFIG)?;
     write(&index, STARTER_INDEX)?;
+    let gitignore = dir.join(".gitignore");
+    if !gitignore.exists() {
+        write(&gitignore, "/site/\n/.lsdocs-cache/\n")?;
+    }
     eprintln!("created {} and {}", config.display(), index.display());
     Ok(ExitCode::SUCCESS)
 }
