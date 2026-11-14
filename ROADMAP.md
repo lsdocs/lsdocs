@@ -379,10 +379,27 @@ highlighting.
 - [x] `plugin_sdk::testing`: a context that drops events, and
       `run_transform`, which runs collect then apply like the host.
 
-### 6b: Navigation and sitemap
-- [ ] Site-wide navigation.
-- [ ] `sitemap.xml`, produced by `render-html` (decided: part of the HTML
-      renderer, not a separate phase or host feature).
+### 6b: Navigation and sitemap ✅
+- [x] `transform-nav` (new builtin): collects titles and `nav_title` /
+      `nav_order` / `nav_exclude` front matter, then gives every document a
+      `nav` metadata entry: a tree following the source directories (a
+      directory's `index` page titles its section), with the current page
+      marked and `prev`/`next` links. Each page carries the whole tree, so
+      metadata grows with the site; revisit in Phase 7 if it matters.
+- [x] `render/site` (new request): sent once after rendering to a renderer
+      whose capability says `site: true`, with every rendered page (source,
+      output path, metadata). It returns extra files; the host rejects paths
+      that leave the output directory or replace a rendered page.
+- [x] `render-html`: writes `sitemap.xml` through `render/site` when
+      `base_url` is absolute (decided: part of the HTML renderer, not a
+      separate phase or host feature); front matter `sitemap: false` leaves
+      a page out. The default theme shows `page.nav` as a sidebar with
+      previous/next links, and templates get a `link` filter that maps
+      source links to outputs.
+- [x] Shared helpers: `doctree::plain_text`, `Document::title` and
+      `plugin_sdk::relative_path` replace copies in the plugins.
+- [ ] Follow-up: `render/site` in `sdk-dynamic` and the Python/Node
+      bindings, so renderers in those languages can write site-wide files.
 
 ### 6c: Syntax highlighting
 - [ ] A `transform-highlight` builtin (decided: a transformer plugin, using

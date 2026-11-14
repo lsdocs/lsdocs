@@ -30,7 +30,8 @@ use lsdocs_config::Config;
 use lsdocs_protocol::doctree::{Document, Value};
 use lsdocs_protocol::{
     Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ProgramInfo, RenderParams,
-    Severity, SiteInfo, TransformApplyParams, TransformCollectParams,
+    RenderSiteParams, RenderedPage, Severity, SiteInfo, TransformApplyParams,
+    TransformCollectParams,
 };
 
 mod plugin;
@@ -399,8 +400,19 @@ async fn run_pipeline(
             .expect("checked above")
             .formats[0]
             .clone();
+        let site = renderer
+            .capabilities
+            .render
+            .as_ref()
+            .is_some_and(|r| r.site);
+        let mut pages = Vec::new();
         for document in documents {
             let source = document.source.clone();
+            let metadata = if site {
+                document.metadata.clone()
+            } else {
+                Default::default()
+            };
             let result = renderer
                 .render(RenderParams {
                     document,
@@ -412,8 +424,39 @@ async fn run_pipeline(
                 Some((stem, _)) if !stem.is_empty() && !stem.ends_with('/') => stem,
                 _ => &source,
             };
-            outputs.push((format!("{stem}.{}", result.extension), result.output));
+            let path = format!("{stem}.{}", result.extension);
+            outputs.push((path.clone(), result.output));
+            pages.push(RenderedPage {
+                source,
+                path,
+                metadata,
+            });
             report.documents += 1;
+        }
+        if site {
+            let result = renderer
+                .render_site(RenderSiteParams {
+                    format: format.clone(),
+                    pages,
+                })
+                .await?;
+            report.diagnostics.extend(result.diagnostics);
+            for file in result.files {
+                let taken =
+                    outputs.iter().any(|(p, _)| *p == file.path) || assets.contains(&file.path);
+                if !is_safe_output_path(&file.path) || taken {
+                    report.diagnostics.push(Diagnostic {
+                        severity: Severity::Error,
+                        message: format!(
+                            "plugin `{}` returned a site file with an invalid or taken path `{}`",
+                            renderer.name, file.path
+                        ),
+                        ..Diagnostic::default()
+                    });
+                    continue;
+                }
+                outputs.push((file.path, file.output));
+            }
         }
     }
 
@@ -442,6 +485,16 @@ fn add_diagnostics(report: &mut BuildReport, source: &str, diagnostics: Vec<Diag
             d.source.get_or_insert_with(|| source.to_owned());
             d
         }));
+}
+
+/// Whether a plugin-chosen output path stays inside the output directory:
+/// relative, `/`-separated, with no empty, `.` or `..` segments.
+fn is_safe_output_path(path: &str) -> bool {
+    !path.is_empty()
+        && !path.contains(['\\', ':'])
+        && path
+            .split('/')
+            .all(|part| !part.is_empty() && part != "." && part != "..")
 }
 
 fn write_file(path: &Path, bytes: &[u8]) -> Result<(), HostError> {
@@ -487,6 +540,25 @@ fn discover(dir: &Path) -> Result<Vec<String>, HostError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn output_paths_stay_inside_the_output_dir() {
+        for ok in ["sitemap.xml", "a/b.json"] {
+            assert!(is_safe_output_path(ok), "{ok}");
+        }
+        for bad in [
+            "",
+            "/etc/x",
+            "../x",
+            "a/../../x",
+            "a//b",
+            "./x",
+            "C:/x",
+            "a\\b",
+        ] {
+            assert!(!is_safe_output_path(bad), "{bad}");
+        }
+    }
 
     #[test]
     fn line_col_counts_lines_and_characters() {

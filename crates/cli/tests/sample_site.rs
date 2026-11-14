@@ -63,14 +63,15 @@ fn sample_site_output() {
             "img/logo.svg",
             "index.html",
             "reference/cli.html",
+            "sitemap.xml",
         ]
     );
 
     for (rel, path) in &built {
         let source = sample_site().join("docs").join(rel);
-        if rel.ends_with(".html") {
-            let html = std::fs::read_to_string(path).unwrap();
-            insta::assert_snapshot!(rel.replace('/', "__"), html);
+        if rel.ends_with(".html") || rel == "sitemap.xml" {
+            let text = std::fs::read_to_string(path).unwrap();
+            insta::assert_snapshot!(rel.replace('/', "__"), text);
         } else {
             assert_eq!(
                 std::fs::read(path).unwrap(),

@@ -12,8 +12,9 @@ use lsdocs_plugin_sdk::{BoxFuture, Context, Event, EventSink, Plugin};
 use lsdocs_protocol::doctree::Document;
 use lsdocs_protocol::{
     Capabilities, Diagnostic, InitializeParams, LogLevel, PROTOCOL_VERSION, ParseParams,
-    ParseResult, RenderParams, RenderResult, TransformApplyParams, TransformApplyResult,
-    TransformCollectParams, TransformCollectResult, notification, request,
+    ParseResult, RenderParams, RenderResult, RenderSiteParams, RenderSiteResult,
+    TransformApplyParams, TransformApplyResult, TransformCollectParams, TransformCollectResult,
+    notification, request,
 };
 use lsdocs_rpc::transport::{Transport, pipe};
 use lsdocs_rpc::{Options, Peer, Router};
@@ -328,6 +329,23 @@ impl PluginClient {
                 .map_err(|e| e.to_string()),
         }
         .map_err(|message| self.phase_error("render", &source, message))
+    }
+
+    pub async fn render_site(
+        &self,
+        params: RenderSiteParams,
+    ) -> Result<RenderSiteResult, HostError> {
+        match &self.kind {
+            Kind::InProcess { plugin, ctx } => plugin
+                .render_site(params, ctx)
+                .await
+                .map_err(|e| e.to_string()),
+            Kind::Remote { peer, .. } => peer
+                .request::<request::RenderSite>(&params)
+                .await
+                .map_err(|e| e.to_string()),
+        }
+        .map_err(|message| self.phase_error("render/site", "the site", message))
     }
 
     /// Stops the plugin: `shutdown`, `exit`, then waits for the process,

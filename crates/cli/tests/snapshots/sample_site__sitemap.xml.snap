@@ -1,0 +1,11 @@
+---
+source: crates/cli/tests/sample_site.rs
+expression: text
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://example.com/sample/guide/configuration.html</loc></url>
+  <url><loc>https://example.com/sample/guide/getting-started.html</loc></url>
+  <url><loc>https://example.com/sample/</loc></url>
+  <url><loc>https://example.com/sample/reference/cli.html</loc></url>
+</urlset>

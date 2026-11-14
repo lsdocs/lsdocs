@@ -11,10 +11,11 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 const LSDOCS: &str = env!("CARGO_BIN_EXE_lsdocs");
-const PLUGINS: [(&str, &str); 4] = [
+const PLUGINS: [(&str, &str); 5] = [
     ("markdown", "parser-markdown"),
     ("toc", "transform-toc"),
     ("links", "transform-links"),
+    ("nav", "transform-nav"),
     ("html", "render-html"),
 ];
 
@@ -54,7 +55,8 @@ fn write_content(site: &Path) {
 /// A config running every plugin the given way: `None` for builtins, or
 /// `Some("stdio" | "pipe")` for out-of-process.
 fn config(transport: Option<&str>) -> String {
-    let mut out = String::from("[site]\ntitle = \"Test Site\"\n");
+    let mut out =
+        String::from("[site]\ntitle = \"Test Site\"\nbase_url = \"https://example.com/\"\n");
     for (name, builtin) in PLUGINS {
         out.push_str(&format!("\n[[plugins]]\nname = \"{name}\"\n"));
         match transport {
@@ -135,7 +137,15 @@ fn in_process_and_out_of_process_builds_match() {
     let (pipe, _) = build_site("pipe", Some("pipe"), &[]);
 
     let files: Vec<_> = in_process.keys().map(String::as_str).collect();
-    assert_eq!(files, ["guide/intro.html", "img/logo.svg", "index.html"]);
+    assert_eq!(
+        files,
+        [
+            "guide/intro.html",
+            "img/logo.svg",
+            "index.html",
+            "sitemap.xml"
+        ]
+    );
 
     let index = String::from_utf8(in_process["index.html"].clone()).unwrap();
     assert!(index.contains("<title>Home | Test Site</title>"), "{index}");
@@ -152,6 +162,16 @@ fn in_process_and_out_of_process_builds_match() {
     assert!(
         index.contains("<a href=\"guide/intro.html\">Intro</a>"),
         "{index}"
+    );
+    // Navigation, and the sitemap from `render/site`.
+    assert!(
+        index.contains("<a href=\"index.html\" aria-current=\"page\">Home</a>"),
+        "{index}"
+    );
+    let sitemap = String::from_utf8(in_process["sitemap.xml"].clone()).unwrap();
+    assert!(
+        sitemap.contains("<loc>https://example.com/guide/intro.html</loc>"),
+        "{sitemap}"
     );
     let intro = String::from_utf8(in_process["guide/intro.html"].clone()).unwrap();
     assert!(
@@ -226,7 +246,7 @@ fn config_errors_are_reported() {
     assert!(!output.status.success());
     let err = stderr(&output);
     assert!(
-        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: parser-markdown, render-html, transform-links, transform-toc)"),
+        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: parser-markdown, render-html, transform-links, transform-nav, transform-toc)"),
         "{err}"
     );
 
