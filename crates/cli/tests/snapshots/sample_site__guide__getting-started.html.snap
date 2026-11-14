@@ -42,12 +42,18 @@ img { max-width: 100%; }
 .toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
 .toc ul { margin: 0; padding-left: 1.25rem; }
 .toc p { margin: 0; }
+.anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
+h1:hover .anchor, h2:hover .anchor, h3:hover .anchor, h4:hover .anchor,
+h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
+.backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.backlinks p { margin: 0 0 0.25rem; }
+.backlinks ul { margin: 0; padding-left: 1.25rem; }
 </style>
 </head>
 <body>
 <header><a href="../index.html">lsdocs sample</a></header>
 <main>
-<h1 id="getting-started">Getting started</h1>
+<h1 id="getting-started">Getting started <a class="anchor" href="#getting-started" aria-label="Link to this section">#</a></h1>
 <div class="toc"><ul>
 <li><p><a href="#install">Install</a></p>
 </li>
@@ -60,21 +66,28 @@ img { max-width: 100%; }
 </ul>
 </div>
 <p>Install lsdocs, create a site, and build it. Back to <a href="../index.html">home</a>.</p>
-<h2 id="install">Install</h2>
+<h2 id="install">Install <a class="anchor" href="#install" aria-label="Link to this section">#</a></h2>
 <pre><code class="language-sh">cargo install lsdocs
 </code></pre>
-<h2 id="create-a-site">Create a site</h2>
+<h2 id="create-a-site">Create a site <a class="anchor" href="#create-a-site" aria-label="Link to this section">#</a></h2>
 <ol>
 <li>Run <code>lsdocs init my-docs</code>.</li>
 <li>Edit <em>my-docs/docs/index.md</em>.</li>
 <li>Build with <strong><code>lsdocs build</code></strong>.</li>
 </ol>
-<h2 id="build">Build</h2>
-<p>The output goes to <code>site/</code>.
+<h2 id="build">Build <a class="anchor" href="#build" aria-label="Link to this section">#</a></h2>
+<p>The output goes to <code>site/</code>; <a href="configuration.html#options">Options</a> says how to change
+that.
 Each Markdown page becomes an HTML page;
 other files are copied as they are.</p>
-<h2 id="build-1">Build</h2>
+<h2 id="build-1">Build <a class="anchor" href="#build-1" aria-label="Link to this section">#</a></h2>
 <p>A second heading with the same title gets a unique id.</p>
+<div class="backlinks"><p><strong>Pages linking here</strong></p>
+<ul>
+<li><p><a href="../index.html">Welcome</a></p>
+</li>
+</ul>
+</div>
 </main>
 <footer>Built with lsdocs</footer>
 </body>

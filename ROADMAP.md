@@ -209,7 +209,7 @@ yet run.
       write. Files no parser claims are copied as assets; hidden files are
       skipped; `files` globs limit what a plugin sees.
 - [x] Routing: a transformer only receives documents containing a node kind
-      it selects. Sending just the matching subtrees moves to Phase 6,
+      it selects. Sending just the matching subtrees moved to Phase 7,
       alongside patch-based responses.
 - [x] Collected data is merged per document (`{source: data}`) between the
       `collect` and `apply` passes.
@@ -357,12 +357,39 @@ installed locally; release wheels and npm packages are 5c.
 
 ## Phase 6: Transformers and cross-document features
 
-- [ ] Table of contents, heading anchors, link rewriting and validation.
-- [ ] Syntax highlighting (e.g. `syntect` or tree-sitter based).
-- [ ] Cross-references and backlinks via `transform/collect` →
-      `transform/apply`.
-- [ ] Site-wide navigation and sitemap.
-- [ ] Optional patch-based `transform` responses for large trees.
+Split into three branches: 6a links, 6b navigation and sitemap, 6c syntax
+highlighting.
+
+### 6a: Links ✅
+- [x] `SiteInfo.files`: the host discovers files before starting plugins
+      and sends every source file (documents and assets) in `initialize`,
+      so transformers can check links to images and other assets.
+- [x] `transform-toc` nests deeper headings under the one before them (the
+      Python and JS ports too).
+- [x] `transform-links` (new builtin), using `transform/collect` →
+      `transform/apply`:
+  - link and image checking: `broken-link` and `broken-anchor` warnings
+    with spans; external URLs are not checked;
+  - cross-references: a link with no text (`[](guide.md#setup)`) takes the
+    title of the heading or page it points to;
+  - backlinks (`backlinks = true`): a `custom:backlinks` list of the pages
+    linking here.
+- [x] `render-html`: `#` anchor links on headings (`heading_anchors`,
+      default on). Link rewriting was done in Phase 4.
+- [x] `plugin_sdk::testing`: a context that drops events, and
+      `run_transform`, which runs collect then apply like the host.
+
+### 6b: Navigation and sitemap
+- [ ] Site-wide navigation.
+- [ ] `sitemap.xml`, produced by `render-html` (decided: part of the HTML
+      renderer, not a separate phase or host feature).
+
+### 6c: Syntax highlighting
+- [ ] A `transform-highlight` builtin (decided: a transformer plugin, using
+      `syntect` with class-based CSS), so highlighting can be swapped out.
+
+Patch-based `transform` responses moved to Phase 7 (decided): they are a
+performance feature, to be decided with the benchmarks there.
 
 ## Phase 7: Developer experience and performance
 
@@ -373,6 +400,9 @@ installed locally; release wheels and npm packages are 5c.
       cross-document dependencies from the collect phase.
 - [ ] `lsdocs serve`: file watching, dev server, live reload.
 - [ ] Benchmarks: in-process vs. out-of-process cost, tree size vs. latency.
+- [ ] Optional patch-based `transform` responses, and sending transformers
+      only the subtrees they select, if the benchmarks show tree size
+      matters (moved from Phase 6).
 
 ## Phase 8: Toward 1.0
 
@@ -393,5 +423,5 @@ installed locally; release wheels and npm packages are 5c.
 | ~~Tree representation~~ | **Decided:** nested; revisit for patches | Phase 1 |
 | ~~Markdown backend~~ | **Decided:** `pulldown-cmark` (byte-offset spans map directly to `Span`) | Phase 4 |
 | ~~Templating engine~~ | **Decided:** `minijinja` | Phase 4 |
-| Transformers: whole tree vs. patches | whole tree, patches later | Phase 6 |
+| Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | Phase 7 |
 | ~~License~~ | **Decided:** `Apache-2.0 OR MIT` | Phase 0 |

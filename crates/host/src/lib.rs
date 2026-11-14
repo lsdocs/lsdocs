@@ -2,10 +2,11 @@
 //!
 //! [`build`] runs one site build:
 //!
-//! 1. **Start** every configured plugin: builtins in-process, others as child
-//!    processes over stdio or a pipe. Each one is initialized and its
-//!    capabilities recorded.
-//! 2. **Discover** files under the source directory.
+//! 1. **Discover** files under the source directory.
+//! 2. **Start** every configured plugin: builtins in-process, others as child
+//!    processes over stdio or a pipe. Each one is initialized, with the list
+//!    of discovered files in [`SiteInfo::files`], and its capabilities
+//!    recorded.
 //! 3. **Parse** each file with the first parser (in config order) that
 //!    handles its extension and whose `files` globs match. Files no parser
 //!    takes are copied to the output as static assets.
@@ -238,6 +239,7 @@ pub async fn build(
     builtins: &Builtins,
 ) -> Result<BuildReport, HostError> {
     let events = Events::default();
+    let files = discover(&root.join(&config.source_dir))?;
     let init = InitializeParams {
         protocol_version: PROTOCOL_VERSION,
         host: ProgramInfo {
@@ -250,6 +252,7 @@ pub async fn build(
             root: std::path::absolute(root)
                 .ok()
                 .map(|p| p.to_string_lossy().into_owned()),
+            files,
         },
         options: Value::Null,
     };
@@ -267,7 +270,7 @@ pub async fn build(
     }
 
     let report = match result {
-        Ok(()) => run_pipeline(config, root, &plugins).await,
+        Ok(()) => run_pipeline(config, root, &init.site.files, &plugins).await,
         Err(e) => Err(e),
     };
 
@@ -288,6 +291,7 @@ pub async fn build(
 async fn run_pipeline(
     config: &Config,
     root: &Path,
+    files: &[String],
     plugins: &[PluginClient],
 ) -> Result<BuildReport, HostError> {
     let mut report = BuildReport::default();
@@ -297,7 +301,7 @@ async fn run_pipeline(
     // Discover and parse.
     let mut documents = Vec::new();
     let mut assets = Vec::new();
-    for source in discover(&source_dir)? {
+    for source in files.iter().cloned() {
         let parser = plugins.iter().find(|p| {
             p.capabilities.parse.as_ref().is_some_and(|cap| {
                 let ext = source.rsplit_once('.').map(|(_, e)| e).unwrap_or("");
