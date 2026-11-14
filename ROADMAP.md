@@ -80,8 +80,8 @@ graph.
       Written but not yet run on GitHub.
 - [x] Dependency-direction check: `nur check-deps` checks each crate's direct
       workspace dependencies against an allowlist in `scripts/check-deps.nu`.
-- [ ] License files (decide MIT, Apache-2.0 or dual). Until then every crate is
-      `publish = false`.
+- [x] License: `Apache-2.0 OR MIT` (`LICENSE-APACHE`, `LICENSE-MIT`). Crates
+      stay `publish = false` until package names are checked.
 
 **Exit:** `cargo test --workspace` passes in CI on all three operating systems.
 
@@ -269,4 +269,4 @@ and install from built wheels and npm tarballs.
 | Markdown backend: `comrak` vs. `pulldown-cmark` | spike both | Phase 4 |
 | Templating engine | `minijinja` | Phase 4 |
 | Transformers: whole tree vs. patches | whole tree, patches later | Phase 6 |
-| License | — | Phase 0 |
+| ~~License~~ | **Decided:** `Apache-2.0 OR MIT` | Phase 0 |
