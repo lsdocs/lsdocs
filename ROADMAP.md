@@ -90,43 +90,60 @@ graph.
 **Goal:** stable, serializable data types and a published schema.
 
 ### `doctree`
-- [ ] Core node kinds: Document, Section, Heading, Paragraph, List/ListItem,
-      CodeBlock, BlockQuote, Table, Image, Link, and inline text/emphasis/code.
-- [ ] `Custom { kind, attrs, children }` extension node.
-- [ ] `Span { file, start, end }` on every node.
-- [ ] Document metadata (front matter) as a generic value map.
-- [ ] Decision: owned nested tree (start here) vs. arena + `NodeId`.
+- [x] Core node kinds: Section, Heading, Paragraph, List/ListItem,
+      BlockQuote, CodeBlock, Table/TableRow/TableCell, ThematicBreak, Raw,
+      Text, Emphasis, Strong, InlineCode, Link, Image, LineBreak.
+- [x] `Custom { kind, attrs, children }` extension node, selected as
+      `custom:<kind>`.
+- [x] `Span { start, end }` (byte offsets) on every node. The file lives once
+      on `Document::source` rather than on every span.
+- [x] Document metadata (front matter) as a map of JSON-like values.
+- [x] Decision: owned nested tree. Revisit arena + `NodeId` only if patching
+      (Phase 6) needs it.
 
 ### `config`
-- [ ] Site config: input dirs, output dir, base URL, theme, plugin list.
-- [ ] Plugin manifest: `command`/`args`, or `runtime = "python" | "node"` +
-      module/entry, transport, phase, claimed globs and node kinds.
-- [ ] Layered loading (file → env → CLI) and validation with good error messages.
+- [x] `lsdocs.toml`: `[site]` (title, base URL, theme), `[build]` (source and
+      output dirs), `[[plugins]]`. Unknown keys are rejected.
+- [x] Plugin entry: exactly one of `builtin`, `command`, or `runtime` +
+      `module`/`entry`; `transport`, `files` globs, free-form `options`.
+      Phases and node kinds come from the plugin's capabilities instead.
+- [x] Validation reports every problem at once, with its location. Overrides
+      layer env (`LSDOCS_*`) then CLI on top. The crate does no I/O.
 
 ### `protocol`
-- [ ] Lifecycle: `initialize`, `initialized`, `shutdown`, `exit`.
-- [ ] Phases: `parse`, `transform/collect`, `transform/apply`, `render`.
-- [ ] Notifications: `diagnostics`, `progress`, `log`, `$/cancel`.
-- [ ] Capabilities: phases, node-kind selectors, `maxConcurrency`, protocol
-      version.
-- [ ] `Diagnostic` modeled on LSP (severity, span, message, code).
+- [x] Lifecycle: `initialize`, `initialized`, `shutdown`, `exit`.
+- [x] Phases: `parse`, `transform/collect`, `transform/apply`, `render`.
+- [x] Notifications: `diagnostics`, `progress`, `log`, `$/cancel`.
+- [x] Capabilities: per-phase (parse extensions, transform node selectors and
+      `collect`, render formats), `max_concurrency`; `protocol_version` in the
+      handshake (0 = unstable until v1).
+- [x] `Diagnostic` modeled on LSP (severity, message, source, span, code).
+- [x] `Request`/`Notification` traits tie each method name to its types.
 
 ### Serialization rules (msgpack)
-- [ ] Structs always encode as **maps**: `rmp_serde::to_vec_named` or
-      `with_struct_map()`. Never positional arrays.
-- [ ] Externally or adjacently tagged enums for node kinds; avoid internally
-      tagged ones on hot paths.
-- [ ] `serde_bytes` for all binary payloads.
-- [ ] No msgpack `ext` types.
+- [x] Structs always encode as **maps**: `protocol::msgpack::encode` wraps
+      `rmp_serde::to_vec_named`. Never positional arrays.
+- [x] Node kinds are **internally tagged** (`{"type": "heading", ...}`), a
+      deliberate change from the original plan: it is the most natural shape
+      for Python dicts and TS discriminated unions. Decoding buffers each
+      node; revisit with a custom deserializer if Phase 7 benchmarks show it
+      matters.
+- [x] `snake_case` field names everywhere; optional fields omitted when
+      empty; unknown fields ignored (except in `lsdocs.toml`).
+- [x] `serde_bytes` for binary payloads (render output).
+- [x] No msgpack `ext` types.
 
 ### Schema and compatibility
-- [ ] `schemars` export to `schema/`. CI fails if the generated schema differs
-      from the checked-in copy.
-- [ ] Golden msgpack fixtures per message type, decoded by a small Python
-      script in CI (catches struct-as-array regressions).
+- [x] `tools/gen` (`nur gen`) writes JSON Schemas to `schema/` for the
+      document, `lsdocs.toml` and every message. A test fails if the
+      checked-in files are stale.
+- [x] Golden fixtures in `fixtures/`: each example value as `.msgpack` plus a
+      `.json` twin. `nur test fixtures` decodes the msgpack with nushell's own
+      decoder and compares, catching struct-as-array regressions. A Python
+      decoder check moves to Phase 5, alongside the bindings.
 
 **Exit:** every protocol type round-trips through msgpack, and the fixtures
-decode correctly from Python.
+decode correctly outside Rust (nushell now, Python in Phase 5). ✅
 
 ## Phase 2: RPC layer
 
@@ -226,6 +243,10 @@ matching exactly.
       and arm64, plus linux-musl.
 - [ ] Binding packages declare their protocol version; the host rejects a
       mismatch with a clear error.
+- [ ] Decode every file in `fixtures/` from Python (the `msgpack` package)
+      and Node (`@msgpack/msgpack`), compared against the JSON twins.
+- [ ] Generate `.pyi` and `.d.ts` types from `schema/` and type-check them
+      against the fixtures.
 
 **Exit:** the Python and TS `transform-toc` plugins pass the shared test suite
 and install from built wheels and npm tarballs.
