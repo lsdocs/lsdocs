@@ -457,7 +457,7 @@ Steps (one branch each, in order):
 - [x] 6d-1 Doctree and protocol: `section` as described, the new node
       kinds, `Link.target`; schemas, fixtures, `spec/` and the bindings'
       type declarations (`index.d.ts`) updated.
-- [ ] 6d-2 Host normalization after parse: slug ids (moved from the
+- [x] 6d-2 Host normalization after parse: slug ids (moved from the
       parser), `Link.target` for relative links to documents, a warning for
       duplicate explicit ids.
 - [ ] 6d-3 `parser-markdown`: build sections from heading levels; GitHub

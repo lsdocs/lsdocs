@@ -10,13 +10,15 @@
 //! 3. **Parse** each file with the first parser (in config order) that
 //!    handles its extension and whose `files` globs match. Files no parser
 //!    takes are copied to the output as static assets.
-//! 4. **Transform**, one transformer at a time in config order: the collect
+//! 4. **Normalize** the parsed documents (see the `normalize` module):
+//!    generated ids for sections and headings, and link targets.
+//! 5. **Transform**, one transformer at a time in config order: the collect
 //!    pass over every document (if the transformer collects), then the apply
 //!    pass. A transformer only sees documents containing a node kind it
 //!    selects.
-//! 5. **Render** each document with the first renderer, in its first format.
-//! 6. **Write** rendered files and assets to the output directory.
-//! 7. **Stop** every plugin.
+//! 6. **Render** each document with the first renderer, in its first format.
+//! 7. **Write** rendered files and assets to the output directory.
+//! 8. **Stop** every plugin.
 //!
 //! Problems with the site's content are returned as diagnostics in the
 //! [`BuildReport`]; problems that stop the build are a [`HostError`].
@@ -34,7 +36,10 @@ use lsdocs_protocol::{
     TransformCollectParams,
 };
 
+mod normalize;
 mod plugin;
+
+pub use normalize::slug;
 
 pub use plugin::Builtins;
 use plugin::{Events, PluginClient};
@@ -339,6 +344,10 @@ async fn run_pipeline(
         report.sources.insert(source, text);
         documents.push(document);
     }
+
+    // Normalize: generated ids and link targets, the same for every parser.
+    let problems = normalize::normalize(&mut documents);
+    report.diagnostics.extend(problems);
 
     // Transform, one transformer at a time.
     for plugin in plugins
