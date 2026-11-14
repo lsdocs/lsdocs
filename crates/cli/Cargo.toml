@@ -21,6 +21,7 @@ lsdocs-host.workspace = true
 lsdocs-parser-markdown.workspace = true
 lsdocs-plugin-sdk.workspace = true
 lsdocs-render-html.workspace = true
+lsdocs-transform-highlight.workspace = true
 lsdocs-transform-links.workspace = true
 lsdocs-transform-nav.workspace = true
 lsdocs-transform-toc.workspace = true

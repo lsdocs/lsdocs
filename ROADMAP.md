@@ -401,9 +401,20 @@ highlighting.
 - [ ] Follow-up: `render/site` in `sdk-dynamic` and the Python/Node
       bindings, so renderers in those languages can write site-wide files.
 
-### 6c: Syntax highlighting
-- [ ] A `transform-highlight` builtin (decided: a transformer plugin, using
-      `syntect` with class-based CSS), so highlighting can be swapped out.
+### 6c: Syntax highlighting ✅
+- [x] `transform-highlight` (new builtin; decided: a transformer plugin, so
+      highlighting can be swapped out). It uses `syntect` (pure-Rust
+      `fancy-regex` backend) with `bat`'s syntaxes from `two-face`, since
+      `syntect`'s own set lacks TOML and TypeScript. Each highlighted block
+      becomes a `custom:highlight` node whose `attrs.html` holds the HTML
+      and whose child is the original `code_block`, so other renderers can
+      fall back to it. Tokens carry `hl-`-prefixed scope classes; the
+      default theme colors them for light and dark. Options: `languages`,
+      `aliases`.
+- [x] `render-html` writes `custom:highlight` nodes' HTML as is.
+- Note: `syntect` 5 depends on `bincode` 1.3, which has an "unmaintained"
+  RustSec advisory; `nur deny` may need an exception until `syntect`
+  moves off it.
 
 Patch-based `transform` responses moved to Phase 7 (decided): they are a
 performance feature, to be decided with the benchmarks there.

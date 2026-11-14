@@ -60,6 +60,7 @@ enum Commands {
 fn builtins() -> Builtins {
     Builtins::new()
         .with("parser-markdown", lsdocs_parser_markdown::plugin)
+        .with("transform-highlight", lsdocs_transform_highlight::plugin)
         .with("transform-links", lsdocs_transform_links::plugin)
         .with("transform-nav", lsdocs_transform_nav::plugin)
         .with("transform-toc", lsdocs_transform_toc::plugin)
@@ -175,6 +176,10 @@ builtin = "transform-links"
 [[plugins]]
 name = "nav"
 builtin = "transform-nav"
+
+[[plugins]]
+name = "highlight"
+builtin = "transform-highlight"
 
 [[plugins]]
 name = "html"

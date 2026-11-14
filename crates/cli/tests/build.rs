@@ -11,11 +11,12 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 const LSDOCS: &str = env!("CARGO_BIN_EXE_lsdocs");
-const PLUGINS: [(&str, &str); 5] = [
+const PLUGINS: [(&str, &str); 6] = [
     ("markdown", "parser-markdown"),
     ("toc", "transform-toc"),
     ("links", "transform-links"),
     ("nav", "transform-nav"),
+    ("highlight", "transform-highlight"),
     ("html", "render-html"),
 ];
 
@@ -246,7 +247,7 @@ fn config_errors_are_reported() {
     assert!(!output.status.success());
     let err = stderr(&output);
     assert!(
-        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: parser-markdown, render-html, transform-links, transform-nav, transform-toc)"),
+        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: parser-markdown, render-html, transform-highlight, transform-links, transform-nav, transform-toc)"),
         "{err}"
     );
 
