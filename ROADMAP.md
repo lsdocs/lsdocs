@@ -267,45 +267,64 @@ not been checked locally (toolchain not installed).
 handshake or dispatch. The two APIs follow each language's idioms rather than
 matching exactly.
 
-### `sdk-dynamic`
-- [ ] Handler table of `Fn(Value) -> Future<Result<Value>>`.
-- [ ] Capability builder; owns the tokio runtime and transport setup.
-- [ ] All protocol behavior lives here, never in a binding.
+### `sdk-dynamic` ✅
+- [x] `DynamicPlugin`: value-based handlers (`Fn(Value, Context) -> Future<Result<Value>>`)
+      turned into an SDK `Plugin`, so capabilities, dispatch, cancellation
+      and shutdown all stay in Rust.
+- [x] Shorthand results for handlers: a bare document, any collect value,
+      or a render string; `source` and `extension` filled in.
+- [x] All protocol behavior lives here or below, never in a binding.
 
-### Python (`bindings/python`)
-- [ ] pyo3 + maturin, `abi3` wheels (e.g. `abi3-py310`).
-- [ ] Decorator API: `@plugin.transform(nodes=[...])`, `plugin.serve()`.
-- [ ] Sync handlers first, then `async def` via `pyo3-async-runtimes`.
-- [ ] Trees converted to/from dicts with `pythonize`.
-- [ ] Report `maxConcurrency = 1` under the GIL; revisit for free-threaded
+### 5a: Python (`bindings/python`) ✅
+- [x] pyo3 0.30 + maturin, one `abi3` wheel for Python ≥ 3.10.
+- [x] Decorator API: `@plugin.parse(extensions=...)`, `@plugin.collect`,
+      `@plugin.transform(nodes=...)`, `@plugin.render(formats=...)`,
+      `plugin.serve()`.
+- [x] Sync handlers, run on a blocking thread holding the GIL while the
+      protocol runs with the GIL released. Exceptions reach the host with
+      their traceback.
+- [ ] `async def` handlers via `pyo3-async-runtimes`.
+- [x] Params passed as dicts (`pythonize`); results converted back,
+      including `bytes` for render output.
+- [x] `max_concurrency = 1` by default (GIL); revisit for free-threaded
       builds.
-- [ ] Redirect `sys.stdout` to stderr in `serve()`.
-- [ ] `.pyi` stubs with `TypedDict`s generated from `schema/`.
+- [x] `serve()` redirects `sys.stdout` to stderr (on top of the fd-level
+      protection in `rpc`).
+- [x] `Context`: `site`, `options`, `log`/`info`/`warn`/`debug`, `progress`,
+      `diagnostic`.
+- [x] `lsdocs_plugin.testing`: an in-process fake host for pytest.
+- [x] Hand-written `_native.pyi` stubs and `py.typed`.
+- [ ] `TypedDict`s for params, results and nodes generated from `schema/`.
+- [x] `examples/transform_toc.py`: a Python port of `transform-toc`. Over
+      stdio, over a pipe and via `runtime = "python"`, it renders the sample
+      site byte-identically to the Rust plugin.
+- [x] Every file in `fixtures/` decodes with Python's `msgpack` to its JSON
+      twin.
+- [x] `nur test python` (in `nur ci`): builds the extension with maturin and
+      runs pytest, with a venv per platform.
 
-### Node (`bindings/node`)
+### 5b: Node (`bindings/node`)
 - [ ] napi-rs, `definePlugin({...}).serve()` API.
 - [ ] Handlers are called via `ThreadsafeFunction`; returned Promises are
       awaited in Rust.
 - [ ] `serve()` returns a Promise that resolves on shutdown.
 - [ ] Redirect `process.stdout.write` to stderr.
+- [ ] Testing harness for vitest.
 - [ ] `.d.ts` doctree types generated from `schema/`.
+- [ ] A TS port of `transform-toc`, byte-identical to the Rust plugin.
+- [ ] Decode every file in `fixtures/` with `@msgpack/msgpack`.
 
-### Both
-- [ ] Testing harness: an in-process fake host (`lsdocs_plugin.testing.call`
-      and the Node equivalent) for pytest and vitest.
-- [ ] A port of `transform-toc` in each language, producing output
-      byte-identical to the Rust plugin.
-- [ ] Release CI: wheels and per-platform npm packages for win/mac/linux on x64
-      and arm64, plus linux-musl.
+### 5c: Packaging
+- [ ] Release CI: wheels and per-platform npm packages for win/mac/linux on
+      x64 and arm64, plus linux-musl.
 - [ ] Binding packages declare their protocol version; the host rejects a
-      mismatch with a clear error.
-- [ ] Decode every file in `fixtures/` from Python (the `msgpack` package)
-      and Node (`@msgpack/msgpack`), compared against the JSON twins.
-- [ ] Generate `.pyi` and `.d.ts` types from `schema/` and type-check them
-      against the fixtures.
+      mismatch with a clear error. (The host check exists since Phase 3; the
+      packages report `PROTOCOL_VERSION`.)
+- [ ] Type-check generated `.pyi` / `.d.ts` types against the fixtures.
 
 **Exit:** the Python and TS `transform-toc` plugins pass the shared test suite
-and install from built wheels and npm tarballs.
+and install from built wheels and npm tarballs. Python half ✅ (built and
+installed as an editable wheel; release wheels are 5c).
 
 ## Phase 6: Transformers and cross-document features
 
