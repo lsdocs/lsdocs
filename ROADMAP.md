@@ -460,16 +460,25 @@ Steps (one branch each, in order):
 - [x] 6d-2 Host normalization after parse: slug ids (moved from the
       parser), `Link.target` for relative links to documents, a warning for
       duplicate explicit ids.
-- [ ] 6d-3 `parser-markdown`: build sections from heading levels; GitHub
+- [x] 6d-3 `parser-markdown`: build sections from heading levels; GitHub
       alerts (`> [!NOTE]`) as admonitions; footnotes, definition lists and
       math via `pulldown-cmark` options; no more slugging.
-- [ ] 6d-4 Transformers: `transform-toc` walks sections (and its Python
+- [x] 6d-4 Transformers: `transform-toc` walks sections (and its Python
       and JS ports), `transform-links` uses targets, section ids and
       `anchor` nodes and resolves labels, `transform-nav` takes titles from
       sections.
-- [ ] 6d-5 `render-html`: `<section id>`, anchor links on section titles,
+- [x] 6d-5 `render-html`: `<section id>`, anchor links on section titles,
       the new node kinds, output URLs from link targets; snapshots
       re-recorded and reviewed.
+- 6d-3 to 6d-5 landed as one commit: once the parser emits sections, the
+  transformers and the renderer must follow for the build to stay correct.
+  Also in it: `transform-links` resolves `label` targets (`broken-label`,
+  `ambiguous-label`); `transform-nav` items carry their `source`, and
+  `render-html` templates get a `page_url` filter that maps a source path
+  to its output; display math renders as a `<span>`, since it can sit
+  inside a paragraph.
+- Later: render footnote definitions together at the end of the page
+  rather than where they appear in the source.
 
 ## Phase 7: Developer experience and performance
 

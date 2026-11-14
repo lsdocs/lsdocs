@@ -71,6 +71,15 @@ img { max-width: 100%; }
 .anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
 h1:hover .anchor, h2:hover .anchor, h3:hover .anchor, h4:hover .anchor,
 h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
+.admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
+  border-left: 4px solid var(--accent); border-radius: 6px; }
+.admonition.warning, .admonition.caution, .admonition.important { border-left-color: var(--hl-keyword); }
+.admonition > :last-child { margin-bottom: 0; }
+.admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
+dt { font-weight: 600; }
+dd { margin: 0 0 0.5rem 1.5rem; }
+.footnote { font-size: 0.875rem; color: var(--muted); }
+.footnote-label { margin: 0; }
 .backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .backlinks p { margin: 0 0 0.25rem; }
 .backlinks ul { margin: 0; padding-left: 1.25rem; }
@@ -94,7 +103,8 @@ h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
 </ul>
 </nav>
 <main>
-<h1 id="config">Configuring a site <a class="anchor" href="#config" aria-label="Link to this section">#</a></h1>
+<section id="config">
+<h1>Configuring a site <a class="anchor" href="#config" aria-label="Link to this section">#</a></h1>
 <div class="toc"><ul>
 <li><p><a href="#options">Options</a></p>
 </li>
@@ -105,13 +115,20 @@ h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
 <blockquote>
 <p>Settings live in <code>lsdocs.toml</code>, next to the <code>docs/</code> directory.</p>
 </blockquote>
-<h2 id="options">Options <a class="anchor" href="#options" aria-label="Link to this section">#</a></h2>
+<aside class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Unknown keys are an error<sup class="footnote-ref"><a href="#fn-strict" id="fnref-strict">strict</a></sup>, so typos are caught early.</p>
+</aside>
+<section id="options">
+<h2>Options <a class="anchor" href="#options" aria-label="Link to this section">#</a></h2>
 <table>
 <tr><th>Key</th><th style="text-align: center">Default</th><th>Meaning</th></tr>
 <tr><td><code>build.source_dir</code></td><td style="text-align: center"><code>docs</code></td><td>Where pages are read from</td></tr>
 <tr><td><code>build.output_dir</code></td><td style="text-align: center"><code>site</code></td><td>Where the site is written</td></tr>
 </table>
-<h2 id="plugins">Plugins <a class="anchor" href="#plugins" aria-label="Link to this section">#</a></h2>
+</section>
+<section id="plugins">
+<h2>Plugins <a class="anchor" href="#plugins" aria-label="Link to this section">#</a></h2>
 <pre class="highlight"><code class="language-toml"><span class="hl-source hl-toml"><span class="hl-punctuation hl-definition hl-table hl-array hl-begin hl-toml">[[</span><span class="hl-meta hl-tag hl-table hl-array hl-toml"><span class="hl-entity hl-name hl-table hl-toml">plugins</span></span><span class="hl-punctuation hl-definition hl-table hl-array hl-end hl-toml">]]</span>
 <span class="hl-meta hl-tag hl-key hl-toml"><span class="hl-entity hl-name hl-tag hl-toml">name</span></span> <span class="hl-punctuation hl-definition hl-key-value hl-toml">=</span> <span class="hl-string hl-quoted hl-double hl-basic hl-toml"><span class="hl-punctuation hl-definition hl-string hl-begin hl-toml">&quot;</span>markdown<span class="hl-punctuation hl-definition hl-string hl-end hl-toml">&quot;</span></span>
 <span class="hl-meta hl-tag hl-key hl-toml"><span class="hl-entity hl-name hl-tag hl-toml">builtin</span></span> <span class="hl-punctuation hl-definition hl-key-value hl-toml">=</span> <span class="hl-string hl-quoted hl-double hl-basic hl-toml"><span class="hl-punctuation hl-definition hl-string hl-begin hl-toml">&quot;</span>parser-markdown<span class="hl-punctuation hl-definition hl-string hl-end hl-toml">&quot;</span></span>
@@ -121,6 +138,12 @@ h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
 <p>Content inside is still Markdown.</p>
 </details>
 <p>Escaping works: 1 &lt; 2 &amp;&amp; &quot;quotes&quot; stay safe.</p>
+<div class="footnote" id="fn-strict">
+<p class="footnote-label"><a href="#fnref-strict">strict</a></p>
+<p>Plugin <code>options</code> tables are the exception: plugins read them.</p>
+</div>
+</section>
+</section>
 <div class="backlinks"><p><strong>Pages linking here</strong></p>
 <ul>
 <li><p><a href="getting-started.html">Getting started</a></p>
