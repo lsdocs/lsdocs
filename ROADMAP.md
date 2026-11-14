@@ -29,7 +29,7 @@ lsdocs/
     config/         lsdocs-config       site config + plugin manifests (serde only)
     protocol/       lsdocs-protocol     message & capability types (serde only)
     rpc/            lsdocs-rpc          msgpack envelope, framing, codec, Peer,
-                                        tower-style layers, in-process transport
+                                        stdio/pipe/in-memory transports
     plugin-sdk/     lsdocs-plugin-sdk   Parser/Transformer/Renderer traits + serve()
     sdk-dynamic/    lsdocs-sdk-dynamic  value-based handler adapter for bindings
     host/           lsdocs-host         registry, supervision, pipeline, cache
@@ -149,23 +149,36 @@ decode correctly outside Rust (nushell now, Python in Phase 5). ✅
 
 **Goal:** a symmetric, transport-agnostic RPC peer.
 
-- [ ] Decision: plain **msgpack-rpc** envelopes (`[0,id,method,params]`,
-      `[1,id,err,result]`, `[2,method,params]`), which existing client
-      libraries can speak, vs. a custom envelope. Leaning msgpack-rpc.
-- [ ] Framing: u32 length prefix with a maximum message size (optionally
-      switchable to bare msgpack for strict msgpack-rpc compatibility).
-- [ ] `Peer`: bidirectional requests and notifications, id allocation,
-      cancellation, graceful shutdown.
-- [ ] tower-style layers: tracing, concurrency limit, timeouts.
-- [ ] Transports: stdio, named pipe / unix socket (path passed via env), and
-      in-process (passes typed values directly, no serialization).
-- [ ] Stdout protection: duplicate the real stdout handle for RPC and redirect
-      fd 1 to stderr (`DuplicateHandle` on Windows, `dup`/`dup2` elsewhere).
-- [ ] `--trace-rpc`: log every frame decoded as JSON.
-- [ ] `spec/`: a first draft of the wire protocol document.
+- [x] Decision: plain **msgpack-rpc** envelopes (`[0,id,method,params]`,
+      `[1,id,err,result]`, `[2,method,params]`). Params are the msgpack-rpc
+      argument array: `[]` or `[params]`.
+- [x] Framing: u32 big-endian length prefix, 64 MiB default limit. Oversized
+      outgoing messages are rejected before sending; an oversized incoming
+      frame ends the connection. Bare (unframed) msgpack is not implemented;
+      add it only if a real msgpack-rpc client needs it.
+- [x] `Peer` + `Router` + `Connection`: bidirectional requests and
+      notifications, typed handlers, out-of-order responses, `$/cancel` both
+      ways (dropping or timing out a request cancels it), graceful shutdown
+      that lets in-flight handlers answer.
+- [x] Tracing, concurrency limit and request timeouts as connection
+      `Options` rather than tower layers, which avoids the `tower` dependency.
+- [x] Transports: stdio, named pipe / unix socket (`LSDOCS_PIPE`), and an
+      in-memory pair. Typed in-process plugins with no serialization move to
+      Phase 3, where the SDK traits they call exist.
+- [x] Stdout protection (`transport::protect_stdout`): duplicate the real
+      stdout and point stdout at stderr (`DuplicateHandle` + `SetStdHandle` +
+      CRT `_dup2` on Windows, `fcntl`/`dup2` elsewhere).
+- [x] Wire tracing: every frame is logged as JSON on the `lsdocs_rpc::wire`
+      tracing target. The CLI's `--trace-rpc` flag will enable it (Phase 3).
+- [x] `spec/wire.md`: first draft of the wire protocol.
+
+- [x] stdio reads stdin on a detached thread, so a plugin that ends its
+      connection exits even while the host still holds its stdin open
+      (tokio's own stdin cannot be cancelled and hung shutdown).
 
 **Exit:** an echo peer passes the same integration test suite over stdio, a
-pipe/socket and in-process.
+pipe/socket and in-memory. ✅ on Windows and Linux (WSL Ubuntu); macOS not
+yet run.
 
 ## Phase 3: Plugin SDK and minimal host
 
@@ -177,6 +190,8 @@ pipe/socket and in-process.
 - [ ] `serve(plugin)` handles the handshake, dispatch and shutdown.
 - [ ] `ctx.log()`, `ctx.diagnostic()`, and host callbacks (e.g. reading the
       collected index).
+- [ ] Typed in-process path: the host calls a builtin plugin's traits
+      directly, with no serialization (moved from Phase 2).
 
 ### `host`
 - [ ] Plugin registry from config; spawn, handshake, version check, restart or
