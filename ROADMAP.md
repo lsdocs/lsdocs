@@ -454,7 +454,7 @@ Decided:
 
 Steps (one branch each, in order):
 
-- [ ] 6d-1 Doctree and protocol: `section` as described, the new node
+- [x] 6d-1 Doctree and protocol: `section` as described, the new node
       kinds, `Link.target`; schemas, fixtures, `spec/` and the bindings'
       type declarations (`index.d.ts`) updated.
 - [ ] 6d-2 Host normalization after parse: slug ids (moved from the
