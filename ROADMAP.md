@@ -283,7 +283,11 @@ matching exactly.
 - [x] Sync handlers, run on a blocking thread holding the GIL while the
       protocol runs with the GIL released. Exceptions reach the host with
       their traceback.
-- [ ] `async def` handlers via `pyo3-async-runtimes`.
+- [x] `async def` handlers: coroutines run on one persistent asyncio loop
+      (a daemon thread), awaited from the handler thread with the GIL
+      released. Loop-bound objects survive across calls, and with
+      `max_concurrency > 1` async handlers overlap. Pure Python; no
+      `pyo3-async-runtimes` needed.
 - [x] Params passed as dicts (`pythonize`); results converted back,
       including `bytes` for render output.
 - [x] `max_concurrency = 1` by default (GIL); revisit for free-threaded
@@ -293,7 +297,8 @@ matching exactly.
 - [x] `Context`: `site`, `options`, `log`/`info`/`warn`/`debug`, `progress`,
       `diagnostic`.
 - [x] `lsdocs_plugin.testing`: an in-process fake host for pytest.
-- [x] Hand-written `_native.pyi` stubs and `py.typed`.
+- [x] Hand-written `_native.pyi` stubs and `py.typed`. pyo3's own stub
+      generation is not mature enough yet; revisit later.
 - [ ] `TypedDict`s for params, results and nodes generated from `schema/`.
 - [x] `examples/transform_toc.py`: a Python port of `transform-toc`. Over
       stdio, over a pipe and via `runtime = "python"`, it renders the sample
