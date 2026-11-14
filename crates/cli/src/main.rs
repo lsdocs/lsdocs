@@ -8,6 +8,8 @@ use lsdocs_config::{Config, Overrides};
 use lsdocs_host::{BuildOptions, Builtins};
 use tracing_subscriber::EnvFilter;
 
+mod serve;
+
 /// Build documentation sites with language-agnostic plugins.
 #[derive(Debug, Parser)]
 #[command(name = "lsdocs", version)]
@@ -44,6 +46,30 @@ enum Commands {
         /// (`.lsdocs-cache/` next to the config).
         #[arg(long)]
         no_cache: bool,
+    },
+    /// Build the site, serve it, and rebuild and reload pages on changes.
+    Serve {
+        /// Path to the config file. Paths in it are relative to its directory.
+        #[arg(short, long, default_value = "lsdocs.toml")]
+        config: PathBuf,
+        /// Override `build.source_dir`.
+        #[arg(long)]
+        source_dir: Option<String>,
+        /// Override `build.output_dir`.
+        #[arg(long)]
+        output_dir: Option<String>,
+        /// Override `site.base_url`.
+        #[arg(long)]
+        base_url: Option<String>,
+        /// Don't reuse or store results in the build cache.
+        #[arg(long)]
+        no_cache: bool,
+        /// Address to listen on.
+        #[arg(long, default_value = "127.0.0.1")]
+        host: std::net::IpAddr,
+        /// Port to listen on (0 picks a free one).
+        #[arg(short, long, default_value_t = 8000)]
+        port: u16,
     },
     /// Create a starter site: `lsdocs.toml` and `docs/index.md`.
     Init {
@@ -97,6 +123,29 @@ fn main() -> ExitCode {
             },
             &BuildOptions { cache: !no_cache },
         )),
+        Commands::Serve {
+            config,
+            source_dir,
+            output_dir,
+            base_url,
+            no_cache,
+            host,
+            port,
+        } => runtime
+            .block_on(serve::serve(
+                &config,
+                &Overrides {
+                    source_dir,
+                    output_dir,
+                    base_url,
+                },
+                &builtins(),
+                &serve::ServeOptions {
+                    addr: (host, port).into(),
+                    build: BuildOptions { cache: !no_cache },
+                },
+            ))
+            .map(|()| ExitCode::SUCCESS),
         Commands::Init { dir } => init(&dir),
         Commands::Plugin { name } => runtime.block_on(serve_builtin(&name)),
     };
@@ -133,21 +182,32 @@ fn init_logging(verbose: u8, trace_rpc: bool) {
         .init();
 }
 
-async fn build(
-    config_path: &Path,
-    cli: Overrides,
-    options: &BuildOptions,
-) -> Result<ExitCode, String> {
+/// Reads the config file, then applies `LSDOCS_*` variables and `cli`.
+fn load_config(config_path: &Path, cli: Overrides) -> Result<Config, String> {
     let text = std::fs::read_to_string(config_path)
         .map_err(|e| format!("{}: {e}", config_path.display()))?;
     let mut config =
         Config::from_toml(&text).map_err(|e| format!("{}: {e}", config_path.display()))?;
     config.apply(Overrides::from_env(std::env::vars()));
     config.apply(cli);
-    let root = match config_path.parent() {
+    Ok(config)
+}
+
+/// The site's root: the directory holding the config file.
+fn site_root(config_path: &Path) -> PathBuf {
+    match config_path.parent() {
         Some(p) if !p.as_os_str().is_empty() => p.to_path_buf(),
         _ => PathBuf::from("."),
-    };
+    }
+}
+
+async fn build(
+    config_path: &Path,
+    cli: Overrides,
+    options: &BuildOptions,
+) -> Result<ExitCode, String> {
+    let config = load_config(config_path, cli)?;
+    let root = site_root(config_path);
 
     let report = lsdocs_host::build(&config, &root, &builtins(), options)
         .await

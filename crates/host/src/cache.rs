@@ -16,7 +16,7 @@
 //! Cached results replay the diagnostics they carry; logs, progress and
 //! diagnostics a plugin sent as notifications are not replayed.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -34,12 +34,15 @@ const FORMAT: &str = "lsdocs-cache-1";
 /// Where the cache lives, relative to the site root.
 pub const DIR: &str = ".lsdocs-cache";
 
-/// The build cache.
+/// The build cache. Entries are kept in memory as well as on disk, so a
+/// session's later builds do not read them back from disk.
 pub(crate) struct Cache {
     dir: PathBuf,
     /// The site settings part of every key.
     site: Vec<u8>,
-    /// Keys read or written by this build.
+    /// Encoded entries, by key.
+    memory: Mutex<HashMap<String, Arc<Vec<u8>>>>,
+    /// Keys read or written by the current build.
     used: Mutex<HashSet<String>>,
     hits: AtomicUsize,
 }
@@ -54,6 +57,7 @@ impl Cache {
         Self {
             dir,
             site: serde_json::to_vec(&site).unwrap_or_default(),
+            memory: Mutex::default(),
             used: Mutex::default(),
             hits: AtomicUsize::new(0),
         }
@@ -94,9 +98,26 @@ impl Cache {
             .insert(key.to_owned());
     }
 
+    /// Starts a build: resets which entries are used and the hit count.
+    pub fn begin_build(&self) {
+        self.used.lock().expect("not poisoned").clear();
+        self.hits.store(0, Ordering::Relaxed);
+    }
+
     /// The entry for `key`, if there is a readable one.
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Option<T> {
-        let bytes = std::fs::read(self.path(key)).ok()?;
+        let remembered = self.memory.lock().expect("not poisoned").get(key).cloned();
+        let bytes = match remembered {
+            Some(bytes) => bytes,
+            None => {
+                let bytes = Arc::new(std::fs::read(self.path(key)).ok()?);
+                self.memory
+                    .lock()
+                    .expect("not poisoned")
+                    .insert(key.to_owned(), bytes.clone());
+                bytes
+            }
+        };
         let value = msgpack::decode(&bytes).ok()?;
         self.mark(key);
         self.hits.fetch_add(1, Ordering::Relaxed);
@@ -107,12 +128,19 @@ impl Cache {
     /// next time, so errors are logged, not returned.
     pub fn put<T: Serialize>(&self, key: &str, value: &T) {
         self.mark(key);
+        let Ok(bytes) = msgpack::encode(value) else {
+            return;
+        };
+        let bytes = Arc::new(bytes);
+        self.memory
+            .lock()
+            .expect("not poisoned")
+            .insert(key.to_owned(), bytes.clone());
         let result = (|| -> std::io::Result<()> {
             std::fs::create_dir_all(&self.dir)?;
-            let bytes = msgpack::encode(value).map_err(std::io::Error::other)?;
             // Write then rename, so a reader never sees a partial entry.
             let temp = self.dir.join(format!("{key}.tmp"));
-            std::fs::write(&temp, bytes)?;
+            std::fs::write(&temp, &*bytes)?;
             std::fs::rename(&temp, self.path(key))
         })();
         if let Err(e) = result {
@@ -125,9 +153,13 @@ impl Cache {
         self.hits.load(Ordering::Relaxed)
     }
 
-    /// Deletes the entries this build did not use.
+    /// Deletes the entries this build did not use, from memory and disk.
     pub fn prune(&self) {
         let used = self.used.lock().expect("not poisoned");
+        self.memory
+            .lock()
+            .expect("not poisoned")
+            .retain(|key, _| used.contains(key));
         let Ok(entries) = std::fs::read_dir(&self.dir) else {
             return;
         };

@@ -546,10 +546,31 @@ Possible next steps, if it matters: one cache file instead of one per
 entry, not rewriting unchanged outputs, and keeping everything in memory
 in `lsdocs serve` (7c).
 
-### 7c: Incremental rebuilds and `lsdocs serve`
-- [ ] A dependency graph, including cross-document dependencies from the
-      collect phase, to rebuild only what a change affects.
-- [ ] `lsdocs serve`: file watching, a dev server and live reload.
+### 7c: Incremental rebuilds and `lsdocs serve` (done)
+- [x] `lsdocs_host::Session`: plugins kept running between builds, the
+      cache kept in memory, outputs only written when their content
+      changed, and (from the second build on) files the build no longer
+      produces deleted. A change to the set of source files restarts the
+      plugins, since they get the file list at startup.
+- [x] Decided: the content-hash cache is the dependency graph. Every
+      result is keyed on all of its inputs, and apply results on a digest
+      of the pass's collected data, so a change re-runs exactly the work
+      whose inputs changed, including on other pages when shared data
+      (titles, anchors, links) changes. Finer tracking (which pages read
+      which collected entries) would need plugins to declare what they
+      read; not needed so far.
+- [x] `lsdocs serve` (`--host`, `--port`, plus the `build` flags): builds,
+      serves the output over HTTP, and rebuilds on changes; open pages
+      reload through a small script (server-sent events on
+      `/__lsdocs/reload`) added to HTML responses only, not to the files.
+      Editing `lsdocs.toml` starts a new session.
+  - Decided: watching polls modification times and sizes every 250 ms
+    instead of using OS file events (`notify`). No dependency (`notify` is
+    CC0-1.0, not in our license allowlist), and polling also works on
+    network and WSL `/mnt/c` mounts, where events often do not arrive.
+  - Decided: a minimal HTTP/1.1 server on tokio (GET/HEAD of files only,
+    `Connection: close`) instead of an HTTP framework. It is for local
+    development, never production.
 
 ### 7d: Bindings
 - [ ] `render/site` in `sdk-dynamic` and the Python/Node bindings, so

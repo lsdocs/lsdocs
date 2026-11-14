@@ -205,8 +205,12 @@ pub struct BuildReport {
     pub cached: usize,
     /// Files copied unchanged.
     pub assets: usize,
-    /// Files written, relative to the output directory, with `/` separators.
+    /// Files in the output directory after the build, relative to it with
+    /// `/` separators.
     pub written: Vec<String>,
+    /// Of those, files whose content changed (and so were written), plus
+    /// files deleted because the build no longer produces them.
+    pub changed: Vec<String>,
     /// Problems reported by plugins, in the order they arrived.
     pub diagnostics: Vec<Diagnostic>,
     /// Source text of each parsed document, for locating diagnostics.
@@ -297,16 +301,131 @@ fn line_col(text: &str, offset: usize) -> (usize, usize) {
 }
 
 /// Builds the site configured by `config`, whose paths are relative to
-/// `root` (the directory holding `lsdocs.toml`).
+/// `root` (the directory holding `lsdocs.toml`), once: starts the plugins,
+/// builds, and stops them.
 pub async fn build(
     config: &Config,
     root: &Path,
     builtins: &Builtins,
     options: &BuildOptions,
 ) -> Result<BuildReport, HostError> {
-    let events = Events::default();
-    let files = discover(&root.join(&config.source_dir))?;
-    let init = InitializeParams {
+    let mut session = Session::start(config.clone(), root, builtins, options).await?;
+    let report = session.build().await;
+    session.stop().await;
+    report
+}
+
+/// A site's plugins kept running between builds, as `lsdocs serve` does.
+///
+/// Each [`Session::build`] rediscovers the source files. Plugins are told
+/// the file list when they start, so when files are added or removed they
+/// are restarted first. The build cache is kept in memory too, and output
+/// files are only written when their content changed; files an earlier
+/// build of the session wrote but this one did not are deleted.
+pub struct Session {
+    config: Config,
+    root: PathBuf,
+    builtins: Builtins,
+    events: Events,
+    init: InitializeParams,
+    plugins: Vec<Arc<PluginClient>>,
+    cache: Option<Arc<cache::Cache>>,
+    /// Digests of the files the last build left in the output directory.
+    outputs: HashMap<String, blake3::Hash>,
+}
+
+impl fmt::Debug for Session {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Session")
+            .field("root", &self.root)
+            .field("plugins", &self.plugins.len())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Session {
+    /// Discovers the source files and starts every configured plugin.
+    pub async fn start(
+        config: Config,
+        root: &Path,
+        builtins: &Builtins,
+        options: &BuildOptions,
+    ) -> Result<Self, HostError> {
+        let files = discover(&root.join(&config.source_dir))?;
+        let init = initialize_params(&config, root, files);
+        let events = Events::default();
+        let plugins = start_plugins(&config, &init, root, builtins, &events).await?;
+        let cache = options
+            .cache
+            .then(|| Arc::new(cache::Cache::new(cache::dir(root), &init.site)));
+        Ok(Self {
+            config,
+            root: root.to_path_buf(),
+            builtins: builtins.clone(),
+            events,
+            init,
+            plugins,
+            cache,
+            outputs: HashMap::new(),
+        })
+    }
+
+    /// Builds the site, restarting the plugins first if the set of source
+    /// files changed since they started.
+    pub async fn build(&mut self) -> Result<BuildReport, HostError> {
+        let files = discover(&self.root.join(&self.config.source_dir))?;
+        if files != self.init.site.files {
+            tracing::info!("source files added or removed; restarting plugins");
+            stop_plugins(std::mem::take(&mut self.plugins)).await;
+            self.init = initialize_params(&self.config, &self.root, files);
+            self.plugins = start_plugins(
+                &self.config,
+                &self.init,
+                &self.root,
+                &self.builtins,
+                &self.events,
+            )
+            .await?;
+        }
+        if let Some(cache) = &self.cache {
+            cache.begin_build();
+        }
+        let mut report = run_pipeline(
+            &self.config,
+            &self.root,
+            &self.init.site.files,
+            &self.plugins,
+            self.cache.clone(),
+            &mut self.outputs,
+        )
+        .await;
+        if let Ok(report) = &mut report
+            && let Some(cache) = &self.cache
+        {
+            report.cached = cache.hits();
+            cache.prune();
+        }
+        // Diagnostics plugins sent as notifications, during this build.
+        let notified = self.events.take_diagnostics();
+        let mut report = report?;
+        report.diagnostics.extend(notified);
+        Ok(report)
+    }
+
+    /// The configuration the session builds.
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// Stops every plugin.
+    pub async fn stop(self) {
+        stop_plugins(self.plugins).await;
+    }
+}
+
+/// The `initialize` params for a site with these source files.
+fn initialize_params(config: &Config, root: &Path, files: Vec<String>) -> InitializeParams {
+    InitializeParams {
         protocol_version: PROTOCOL_VERSION,
         host: ProgramInfo {
             name: "lsdocs".into(),
@@ -321,30 +440,33 @@ pub async fn build(
             files,
         },
         options: Value::Null,
-    };
+    }
+}
 
+/// Starts every configured plugin; if one fails, stops those started.
+async fn start_plugins(
+    config: &Config,
+    init: &InitializeParams,
+    root: &Path,
+    builtins: &Builtins,
+    events: &Events,
+) -> Result<Vec<Arc<PluginClient>>, HostError> {
     let mut plugins = Vec::with_capacity(config.plugins.len());
-    let mut result = Ok(());
     for entry in &config.plugins {
-        match PluginClient::start(entry, &init, root, builtins, &events).await {
+        match PluginClient::start(entry, init, root, builtins, events).await {
             Ok(plugin) => plugins.push(Arc::new(plugin)),
             Err(e) => {
-                result = Err(e);
-                break;
+                stop_plugins(plugins).await;
+                return Err(e);
             }
         }
     }
+    Ok(plugins)
+}
 
-    let cache = options
-        .cache
-        .then(|| Arc::new(cache::Cache::new(cache::dir(root), &init.site)));
-    let report = match result {
-        Ok(()) => run_pipeline(config, root, &init.site.files, &plugins, cache.clone()).await,
-        Err(e) => Err(e),
-    };
-
-    // Always stop whatever was started. Every task using a plugin has
-    // finished, so each `Arc` is the last one.
+/// Stops plugins. Every task using one has finished by now, so each `Arc`
+/// is the last one.
+async fn stop_plugins(plugins: Vec<Arc<PluginClient>>) {
     for plugin in plugins {
         let Ok(plugin) = Arc::try_unwrap(plugin) else {
             tracing::warn!("a plugin is still in use at shutdown");
@@ -354,16 +476,6 @@ pub async fn build(
             tracing::warn!("{e}");
         }
     }
-
-    let mut report = report?;
-    if let Some(cache) = cache {
-        report.cached = cache.hits();
-        cache.prune();
-    }
-    // Out-of-band diagnostics arrive as notifications; collect them last so
-    // none sent before shutdown are missed.
-    report.diagnostics.extend(events.take_diagnostics());
-    Ok(report)
 }
 
 async fn run_pipeline(
@@ -372,6 +484,7 @@ async fn run_pipeline(
     files: &[String],
     plugins: &[Arc<PluginClient>],
     cache: Option<Arc<cache::Cache>>,
+    previous: &mut HashMap<String, blake3::Hash>,
 ) -> Result<BuildReport, HostError> {
     let mut report = BuildReport::default();
     let source_dir = root.join(&config.source_dir);
@@ -639,22 +752,64 @@ async fn run_pipeline(
         }
     }
 
-    // Write.
-    for (rel, bytes) in &outputs {
-        write_file(&output_dir.join(rel), bytes)?;
-        report.written.push(rel.clone());
+    // Write what changed, then delete what an earlier build of the session
+    // wrote but this one did not.
+    let mut current = HashMap::new();
+    for (rel, bytes) in outputs {
+        if write_if_changed(&output_dir, &rel, &bytes, previous, &mut current)? {
+            report.changed.push(rel.clone());
+        }
+        report.written.push(rel);
     }
     for rel in assets {
         let from = source_dir.join(&rel);
-        let to = output_dir.join(&rel);
-        if let Some(parent) = to.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| HostError::io(parent, e))?;
+        let bytes = std::fs::read(&from).map_err(|e| HostError::io(&from, e))?;
+        if write_if_changed(&output_dir, &rel, &bytes, previous, &mut current)? {
+            report.changed.push(rel.clone());
         }
-        std::fs::copy(&from, &to).map_err(|e| HostError::io(&from, e))?;
         report.written.push(rel);
         report.assets += 1;
     }
+    let mut stale: Vec<&String> = previous
+        .keys()
+        .filter(|rel| !current.contains_key(*rel))
+        .collect();
+    stale.sort();
+    for rel in stale {
+        let path = output_dir.join(rel);
+        match std::fs::remove_file(&path) {
+            Ok(()) => report.changed.push(rel.clone()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(HostError::io(path, e)),
+        }
+    }
+    *previous = current;
     Ok(report)
+}
+
+/// Writes `bytes` to `rel` under `output_dir` unless the file already has
+/// that content, judged by `previous` (digests from the last build) or by
+/// reading the file. Records the digest in `current`; returns whether the
+/// file was written.
+fn write_if_changed(
+    output_dir: &Path,
+    rel: &str,
+    bytes: &[u8],
+    previous: &HashMap<String, blake3::Hash>,
+    current: &mut HashMap<String, blake3::Hash>,
+) -> Result<bool, HostError> {
+    let digest = blake3::hash(bytes);
+    current.insert(rel.to_owned(), digest);
+    let path = output_dir.join(rel);
+    let unchanged = match previous.get(rel) {
+        Some(known) => *known == digest && path.is_file(),
+        None => std::fs::read(&path).is_ok_and(|existing| existing == bytes),
+    };
+    if unchanged {
+        return Ok(false);
+    }
+    write_file(&path, bytes)?;
+    Ok(true)
 }
 
 fn add_diagnostics(report: &mut BuildReport, source: &str, diagnostics: Vec<Diagnostic>) {
