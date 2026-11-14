@@ -22,18 +22,24 @@
 //!
 //! Problems with the site's content are returned as diagnostics in the
 //! [`BuildReport`]; problems that stop the build are a [`HostError`].
-//! Documents are processed one at a time for now.
+//!
+//! Within each phase, documents are processed in parallel on the runtime's
+//! worker threads, each plugin handling at most its `max_concurrency`
+//! requests at once (by default, one per CPU). Results are gathered in
+//! source order, so the output and the order of diagnostics do not depend
+//! on timing.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fmt;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use lsdocs_config::Config;
 use lsdocs_protocol::doctree::{Document, Value};
 use lsdocs_protocol::{
     Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ProgramInfo, RenderParams,
-    RenderSiteParams, RenderedPage, Severity, SiteInfo, TransformApplyParams,
-    TransformCollectParams,
+    RenderSiteParams, RenderedPage, Severity, SiteInfo, TransformCollectParams,
 };
 
 mod normalize;
@@ -225,6 +231,41 @@ impl BuildReport {
     }
 }
 
+/// What parsing one file produced.
+enum Parsed {
+    /// The file is not UTF-8 text.
+    NotUtf8(String),
+    /// Source path, source text and the parser's result.
+    Document(String, String, lsdocs_protocol::ParseResult),
+}
+
+/// Runs `f` on every item, several at once on the runtime's worker threads,
+/// and returns the results in the order of `items`. Each plugin limits its
+/// own concurrency; this only bounds how many tasks are queued at a time.
+async fn in_parallel<T, R, F, Fut>(items: Vec<T>, f: F) -> Vec<R>
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -> Fut,
+    Fut: Future<Output = R> + Send + 'static,
+{
+    use futures_util::stream::{self, StreamExt};
+    let width = plugin::default_concurrency() * 2;
+    stream::iter(items)
+        .map(|item| {
+            let task = tokio::spawn(f(item));
+            async move {
+                match task.await {
+                    Ok(result) => result,
+                    Err(e) => std::panic::resume_unwind(e.into_panic()),
+                }
+            }
+        })
+        .buffered(width)
+        .collect()
+        .await
+}
+
 /// One-based line and column (in characters) of a byte offset.
 fn line_col(text: &str, offset: usize) -> (usize, usize) {
     let mut offset = offset.min(text.len());
@@ -267,7 +308,7 @@ pub async fn build(
     let mut result = Ok(());
     for entry in &config.plugins {
         match PluginClient::start(entry, &init, root, builtins, &events).await {
-            Ok(plugin) => plugins.push(plugin),
+            Ok(plugin) => plugins.push(Arc::new(plugin)),
             Err(e) => {
                 result = Err(e);
                 break;
@@ -280,8 +321,13 @@ pub async fn build(
         Err(e) => Err(e),
     };
 
-    // Always stop whatever was started.
+    // Always stop whatever was started. Every task using a plugin has
+    // finished, so each `Arc` is the last one.
     for plugin in plugins {
+        let Ok(plugin) = Arc::try_unwrap(plugin) else {
+            tracing::warn!("a plugin is still in use at shutdown");
+            continue;
+        };
         if let Err(e) = plugin.shutdown().await {
             tracing::warn!("{e}");
         }
@@ -298,58 +344,77 @@ async fn run_pipeline(
     config: &Config,
     root: &Path,
     files: &[String],
-    plugins: &[PluginClient],
+    plugins: &[Arc<PluginClient>],
 ) -> Result<BuildReport, HostError> {
     let mut report = BuildReport::default();
     let source_dir = root.join(&config.source_dir);
     let output_dir = root.join(&config.output_dir);
 
-    // Discover and parse.
-    let mut documents = Vec::new();
+    // Discover and parse. Files no parser takes are assets.
+    let mut to_parse = Vec::new();
     let mut assets = Vec::new();
     for source in files.iter().cloned() {
+        let ext = source.rsplit_once('.').map(|(_, e)| e).unwrap_or("");
         let parser = plugins.iter().find(|p| {
-            p.capabilities.parse.as_ref().is_some_and(|cap| {
-                let ext = source.rsplit_once('.').map(|(_, e)| e).unwrap_or("");
-                cap.extensions.iter().any(|e| e.eq_ignore_ascii_case(ext))
-            }) && p.wants_file(&source)
+            p.capabilities
+                .parse
+                .as_ref()
+                .is_some_and(|cap| cap.extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)))
+                && p.wants_file(&source)
         });
-        let Some(parser) = parser else {
-            assets.push(source);
-            continue;
-        };
-        let path = source_dir.join(&source);
-        let text = match std::fs::read_to_string(&path) {
-            Ok(text) => text,
-            Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
-                report.diagnostics.push(Diagnostic {
-                    severity: Severity::Error,
-                    message: "file is not valid UTF-8".into(),
-                    source: Some(source),
-                    ..Diagnostic::default()
-                });
-                continue;
+        match parser {
+            Some(parser) => to_parse.push((source, Arc::clone(parser))),
+            None => assets.push(source),
+        }
+    }
+    let parsed = in_parallel(to_parse, {
+        let source_dir = source_dir.clone();
+        move |(source, parser)| {
+            let path = source_dir.join(&source);
+            async move {
+                let text = match std::fs::read_to_string(&path) {
+                    Ok(text) => text,
+                    Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
+                        return Ok(Parsed::NotUtf8(source));
+                    }
+                    Err(e) => return Err(HostError::io(path, e)),
+                };
+                let result = parser
+                    .parse(ParseParams {
+                        source: source.clone(),
+                        text: text.clone(),
+                    })
+                    .await?;
+                Ok(Parsed::Document(source, text, result))
             }
-            Err(e) => return Err(HostError::io(path, e)),
-        };
-        let parsed = parser
-            .parse(ParseParams {
-                source: source.clone(),
-                text: text.clone(),
-            })
-            .await?;
-        add_diagnostics(&mut report, &source, parsed.diagnostics);
-        let mut document = parsed.document;
-        document.source = source.clone();
-        report.sources.insert(source, text);
-        documents.push(document);
+        }
+    })
+    .await;
+    let mut documents = Vec::new();
+    for parsed in parsed {
+        match parsed? {
+            Parsed::NotUtf8(source) => report.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: "file is not valid UTF-8".into(),
+                source: Some(source),
+                ..Diagnostic::default()
+            }),
+            Parsed::Document(source, text, result) => {
+                add_diagnostics(&mut report, &source, result.diagnostics);
+                let mut document = result.document;
+                document.source = source.clone();
+                report.sources.insert(source, text);
+                documents.push(document);
+            }
+        }
     }
 
     // Normalize: generated ids and link targets, the same for every parser.
     let problems = normalize::normalize(&mut documents);
     report.diagnostics.extend(problems);
 
-    // Transform, one transformer at a time.
+    // Transform, one transformer at a time; within a pass, documents in
+    // parallel.
     for plugin in plugins
         .iter()
         .filter(|p| p.capabilities.transform.is_some())
@@ -362,35 +427,53 @@ async fn run_pipeline(
         let selected: Vec<usize> = (0..documents.len())
             .filter(|&i| plugin.wants_document(&documents[i]))
             .collect();
-        let mut collected = Value::Null;
         if collects {
-            let mut data = BTreeMap::new();
-            for &i in &selected {
-                let result = plugin
-                    .collect(TransformCollectParams {
-                        document: documents[i].clone(),
-                    })
-                    .await?;
-                add_diagnostics(&mut report, &documents[i].source, result.diagnostics);
-                data.insert(documents[i].source.clone(), result.data);
+            let inputs = selected.iter().map(|&i| documents[i].clone()).collect();
+            let results = in_parallel(inputs, {
+                let plugin = Arc::clone(plugin);
+                move |document: Document| {
+                    let plugin = Arc::clone(&plugin);
+                    async move {
+                        let source = document.source.clone();
+                        let result = plugin.collect(TransformCollectParams { document }).await;
+                        result.map(|r| (source, r))
+                    }
+                }
+            })
+            .await;
+            let mut data = serde_json::Map::new();
+            for result in results {
+                let (source, result) = result?;
+                add_diagnostics(&mut report, &source, result.diagnostics);
+                data.insert(source, result.data);
             }
-            collected = Value::Object(data.into_iter().collect());
+            plugin.set_collected(Value::Object(data)).await?;
         }
-        for &i in &selected {
-            let source = documents[i].source.clone();
-            let result = plugin
-                .apply(TransformApplyParams {
-                    document: std::mem::replace(&mut documents[i], Document::new(source.clone())),
-                    collected: collected.clone(),
-                })
-                .await?;
+        let inputs: Vec<(usize, Document)> = selected
+            .iter()
+            .map(|&i| {
+                let placeholder = Document::new(documents[i].source.clone());
+                (i, std::mem::replace(&mut documents[i], placeholder))
+            })
+            .collect();
+        let results = in_parallel(inputs, {
+            let plugin = Arc::clone(plugin);
+            move |(i, document): (usize, Document)| {
+                let plugin = Arc::clone(&plugin);
+                async move { plugin.apply(document).await.map(|r| (i, r)) }
+            }
+        })
+        .await;
+        for result in results {
+            let (i, result) = result?;
+            let source = std::mem::take(&mut documents[i].source);
             add_diagnostics(&mut report, &source, result.diagnostics);
             documents[i] = result.document;
             documents[i].source = source;
         }
     }
 
-    // Render.
+    // Render, documents in parallel.
     let mut outputs: Vec<(String, Vec<u8>)> = Vec::new();
     if !documents.is_empty() {
         let renderer = plugins
@@ -414,20 +497,28 @@ async fn run_pipeline(
             .render
             .as_ref()
             .is_some_and(|r| r.site);
+        let results = in_parallel(documents, {
+            let renderer = Arc::clone(renderer);
+            let format = format.clone();
+            move |document: Document| {
+                let renderer = Arc::clone(&renderer);
+                let format = format.clone();
+                async move {
+                    let source = document.source.clone();
+                    let metadata = if site {
+                        document.metadata.clone()
+                    } else {
+                        Default::default()
+                    };
+                    let result = renderer.render(RenderParams { document, format }).await;
+                    result.map(|r| (source, metadata, r))
+                }
+            }
+        })
+        .await;
         let mut pages = Vec::new();
-        for document in documents {
-            let source = document.source.clone();
-            let metadata = if site {
-                document.metadata.clone()
-            } else {
-                Default::default()
-            };
-            let result = renderer
-                .render(RenderParams {
-                    document,
-                    format: format.clone(),
-                })
-                .await?;
+        for result in results {
+            let (source, metadata, result) = result?;
             add_diagnostics(&mut report, &source, result.diagnostics);
             let stem = match source.rsplit_once('.') {
                 Some((stem, _)) if !stem.is_empty() && !stem.ends_with('/') => stem,
@@ -549,6 +640,18 @@ fn discover(dir: &Path) -> Result<Vec<String>, HostError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn in_parallel_keeps_input_order() {
+        // Later items finish first; results still come back in input order.
+        let items: Vec<u64> = (0..20).collect();
+        let results = in_parallel(items, |i| async move {
+            tokio::time::sleep(std::time::Duration::from_millis(20 - i)).await;
+            i * 10
+        })
+        .await;
+        assert_eq!(results, (0..20).map(|i| i * 10).collect::<Vec<_>>());
+    }
 
     #[test]
     fn output_paths_stay_inside_the_output_dir() {

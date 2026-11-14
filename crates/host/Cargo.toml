@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+futures-util = { workspace = true, features = ["alloc"] }
 globset.workspace = true
 lsdocs-config.workspace = true
 lsdocs-plugin-sdk.workspace = true

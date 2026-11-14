@@ -482,19 +482,59 @@ Steps (one branch each, in order):
 
 ## Phase 7: Developer experience and performance
 
-- [ ] Parallel parse and render across documents, respecting each plugin's
-      `maxConcurrency`.
-- [ ] Content-hash cache with per-plugin version keys.
-- [ ] Incremental rebuilds driven by a dependency graph, including
-      cross-document dependencies from the collect phase.
-- [ ] `lsdocs serve`: file watching, dev server, live reload.
-- [ ] Benchmarks: in-process vs. out-of-process cost, tree size vs. latency.
+Split into branches, in order:
+
+### 7a: Parallel pipeline and benchmarks (done)
+- [x] Parse, collect, apply and render run across documents in parallel
+      (on the runtime's worker threads, so in-process plugins use every
+      core), each plugin limited to its `max_concurrency` (default: the
+      number of CPUs). Output and diagnostic order stay deterministic.
+- [x] Benchmarks (`nur bench`, `scripts/bench.nu`): a generated site of N
+      pages built in-process, over stdio and over a pipe, and with growing
+      page sizes, to measure out-of-process cost and tree size vs. latency.
+- [x] Decided: no patch-based `transform` responses for now. The numbers
+      (below) showed the cost was decoding and repeated data, not tree
+      size on the wire:
+  - Decoding a document was about 8x slower than encoding it, because
+    serde's derived decoder for internally tagged enums buffers every
+    node. `Node` now has a hand-written `Deserialize` that reads `type`
+    first (our encoder always writes it first) and falls back to buffering
+    otherwise: 2.6 ms -> 0.96 ms for a 160 KB page.
+  - Every `transform/apply` carried the whole collected map, so
+    out-of-process cost grew with the square of the page count. A new
+    `transform/collected` request sends it once per pass; the SDK fills
+    it back into each apply, so handlers and the bindings see no change.
+
+Results (Windows, release build, median of 3; pages with 5 sections
+unless noted):
+
+| Case | Before | After |
+|---|---|---|
+| 201 pages, in-process | 713 ms | 500 ms |
+| 201 pages, stdio | 1064 ms | 854 ms |
+| 21 pages x 200 sections, stdio | 1432 ms | 566 ms |
+| 1001 pages, in-process | 4.3 s | 4.3 s |
+| 1001 pages, stdio | 12.2 s | 9.8 s |
+
+Still growing faster than the page count: `transform-nav` puts the whole
+site's navigation into every page's metadata, which then goes to every
+later plugin and the renderer. Sharing site-wide data once (rather than
+per page) is an open question, below.
+
+### 7b: Cache
+- [ ] Content-hash cache: parse and render results keyed by input hash and
+      plugin name + version (+ options), so an unchanged page is not
+      reparsed or rerendered.
+
+### 7c: Incremental rebuilds and `lsdocs serve`
+- [ ] A dependency graph, including cross-document dependencies from the
+      collect phase, to rebuild only what a change affects.
+- [ ] `lsdocs serve`: file watching, a dev server and live reload.
+
+### 7d: Bindings
 - [ ] `render/site` in `sdk-dynamic` and the Python/Node bindings, so
       renderers in those languages can write site-wide files (moved from
       Phase 6b).
-- [ ] Optional patch-based `transform` responses, and sending transformers
-      only the subtrees they select, if the benchmarks show tree size
-      matters (moved from Phase 6).
 
 ## Phase 8: Toward 1.0
 
@@ -520,6 +560,7 @@ Steps (one branch each, in order):
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | Phase 7 |
 | ~~License~~ | **Decided:** `Apache-2.0 OR MIT` | Phase 0 |
 | ~~Parser-neutral cross-references~~ | **Decided:** structured link targets; see Phase 6d | Phase 6d |
+| Site-wide data shared once (e.g. navigation) instead of per page | open | when nav cost matters |
 | ~~Canonical document shape~~ | **Decided:** nested sections, host-generated ids, more core node kinds; see Phase 6d | Phase 6d |
 
 ### Parser-neutral cross-references (background for 6d)

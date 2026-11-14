@@ -10,21 +10,29 @@ use globset::{Glob, GlobSet, GlobSetBuilder};
 use lsdocs_config::{Command, Launch, Transport as TransportKind};
 use lsdocs_plugin_sdk::{BoxFuture, Context, Event, EventSink, Plugin};
 use lsdocs_protocol::doctree::Document;
+use lsdocs_protocol::doctree::Value;
 use lsdocs_protocol::{
     Capabilities, Diagnostic, InitializeParams, LogLevel, PROTOCOL_VERSION, ParseParams,
     ParseResult, RenderParams, RenderResult, RenderSiteParams, RenderSiteResult,
     TransformApplyParams, TransformApplyResult, TransformCollectParams, TransformCollectResult,
-    notification, request,
+    TransformCollectedParams, notification, request,
 };
 use lsdocs_rpc::transport::{Transport, pipe};
 use lsdocs_rpc::{Options, Peer, Router};
 use tokio::process::Child;
+use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 
 use crate::HostError;
 
 /// How long a plugin gets to start and answer `initialize`.
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// How many requests a plugin gets at once if it sets no
+/// `max_concurrency`: one per CPU.
+pub(crate) fn default_concurrency() -> usize {
+    std::thread::available_parallelism().map_or(1, usize::from)
+}
 /// How long a plugin gets to exit after `exit` before it is killed.
 const EXIT_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -130,6 +138,10 @@ pub(crate) struct PluginClient {
     pub capabilities: Capabilities,
     /// The `files` globs from the site config, if any.
     files: Option<GlobSet>,
+    /// Limits phase requests in flight to the plugin's `max_concurrency`.
+    permits: Semaphore,
+    /// An in-process plugin's collected data for the apply pass.
+    collected: Mutex<Arc<Value>>,
     kind: Kind,
 }
 
@@ -241,10 +253,15 @@ impl PluginClient {
             }
         };
 
+        let limit = capabilities
+            .max_concurrency
+            .map_or_else(default_concurrency, |n| (n as usize).max(1));
         Ok(Self {
             name,
             capabilities,
             files,
+            permits: Semaphore::new(limit),
+            collected: Mutex::default(),
             kind,
         })
     }
@@ -270,6 +287,7 @@ impl PluginClient {
     }
 
     pub async fn parse(&self, params: ParseParams) -> Result<ParseResult, HostError> {
+        let _permit = self.permits.acquire().await.expect("never closed");
         let source = params.source.clone();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
@@ -287,6 +305,7 @@ impl PluginClient {
         &self,
         params: TransformCollectParams,
     ) -> Result<TransformCollectResult, HostError> {
+        let _permit = self.permits.acquire().await.expect("never closed");
         let source = params.document.source.clone();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
@@ -300,24 +319,54 @@ impl PluginClient {
         .map_err(|message| self.phase_error("transform/collect", &source, message))
     }
 
-    pub async fn apply(
-        &self,
-        params: TransformApplyParams,
-    ) -> Result<TransformApplyResult, HostError> {
-        let source = params.document.source.clone();
+    /// Hands the plugin what it collected from every document, once before
+    /// the apply pass: sent with `transform/collected`, or kept here for an
+    /// in-process plugin.
+    pub async fn set_collected(&self, collected: Value) -> Result<(), HostError> {
         match &self.kind {
-            Kind::InProcess { plugin, ctx } => {
-                plugin.apply(params, ctx).await.map_err(|e| e.to_string())
+            Kind::InProcess { .. } => {
+                *self.collected.lock().expect("not poisoned") = Arc::new(collected);
+                Ok(())
             }
             Kind::Remote { peer, .. } => peer
-                .request::<request::TransformApply>(&params)
+                .request::<request::TransformCollected>(&TransformCollectedParams { collected })
                 .await
-                .map_err(|e| e.to_string()),
+                .map_err(|e| self.phase_error("transform/collected", "the site", e.to_string())),
+        }
+    }
+
+    /// Transforms one document. Collected data comes from
+    /// [`PluginClient::set_collected`].
+    pub async fn apply(&self, document: Document) -> Result<TransformApplyResult, HostError> {
+        let _permit = self.permits.acquire().await.expect("never closed");
+        let source = document.source.clone();
+        match &self.kind {
+            Kind::InProcess { plugin, ctx } => {
+                // Copy the `Arc` under the lock and the data outside it, so
+                // parallel applies do not queue on the lock.
+                let shared = Arc::clone(&self.collected.lock().expect("not poisoned"));
+                let collected = (*shared).clone();
+                let params = TransformApplyParams {
+                    document,
+                    collected,
+                };
+                plugin.apply(params, ctx).await.map_err(|e| e.to_string())
+            }
+            Kind::Remote { peer, .. } => {
+                let params = TransformApplyParams {
+                    document,
+                    collected: Value::Null,
+                };
+                peer.request::<request::TransformApply>(&params)
+                    .await
+                    .map_err(|e| e.to_string())
+            }
         }
         .map_err(|message| self.phase_error("transform/apply", &source, message))
     }
 
     pub async fn render(&self, params: RenderParams) -> Result<RenderResult, HostError> {
+        let _permit = self.permits.acquire().await.expect("never closed");
         let source = params.document.source.clone();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
@@ -335,6 +384,7 @@ impl PluginClient {
         &self,
         params: RenderSiteParams,
     ) -> Result<RenderSiteResult, HostError> {
+        let _permit = self.permits.acquire().await.expect("never closed");
         match &self.kind {
             Kind::InProcess { plugin, ctx } => plugin
                 .render_site(params, ctx)
