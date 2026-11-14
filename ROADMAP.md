@@ -144,7 +144,7 @@ graph.
       decoder check moves to Phase 5, alongside the bindings.
 
 **Exit:** every protocol type round-trips through msgpack, and the fixtures
-decode correctly outside Rust (nushell now, Python in Phase 5). ✅
+decode correctly outside Rust (nushell now, Python in Phase 5). Done.
 
 ## Phase 2: RPC layer
 
@@ -178,7 +178,7 @@ decode correctly outside Rust (nushell now, Python in Phase 5). ✅
       (tokio's own stdin cannot be cancelled and hung shutdown).
 
 **Exit:** an echo peer passes the same integration test suite over stdio, a
-pipe/socket and in-memory. ✅ on Windows and Linux (WSL Ubuntu); macOS not
+pipe/socket and in-memory. Done on Windows and Linux (WSL Ubuntu); macOS not
 yet run.
 
 ## Phase 3: Plugin SDK and minimal host
@@ -193,7 +193,7 @@ yet run.
       shutdown over stdio or `LSDOCS_PIPE`. Phases a plugin lacks answer
       "method not found"; requests before `initialize` are refused.
 - [x] `Context`: `site()`, `options()`, `log`/`info`/`warn`/`debug`,
-      `progress`, `diagnostic`. Host callbacks (plugin → host requests) are
+      `progress`, `diagnostic`. Host callbacks (plugin -> host requests) are
       not needed yet, since `transform/apply` already carries the collected
       data; add them when a plugin needs one.
 - [x] Typed in-process path: the host calls a builtin `Plugin` directly, with
@@ -203,9 +203,9 @@ yet run.
 - [x] Plugin startup from config: builtins in-process; `command`, Python
       (`python -m`) and Node runtimes as child processes over stdio or a
       pipe; handshake with timeouts and protocol version check. Shutdown is
-      `shutdown` → `exit` → wait, killing a plugin that does not exit. A
+      `shutdown` -> `exit` -> wait, killing a plugin that does not exit. A
       plugin that fails to start fails the build (no restart policy yet).
-- [x] Sequential pipeline: discover → parse → collect → apply → render →
+- [x] Sequential pipeline: discover -> parse -> collect -> apply -> render ->
       write. Files no parser claims are copied as assets; hidden files are
       skipped; `files` globs limit what a plugin sees.
 - [x] Routing: a transformer only receives documents containing a node kind
@@ -231,7 +231,7 @@ yet run.
 - [x] `render-html`: standalone escaped HTML pages covering every node kind.
 
 **Exit:** `lsdocs build` runs a parser, a transformer and a renderer
-in-process, over stdio and over a pipe, with byte-identical output. ✅ on
+in-process, over stdio and over a pipe, with byte-identical output. Done on
 Windows and Linux (WSL).
 
 ## Phase 4: First real site
@@ -250,14 +250,14 @@ Windows and Linux (WSL).
       from their options even when running in-process.
 - [x] Each plugin ships as a lib (in-process) and runs out-of-process via
       `lsdocs plugin <name>` (done in Phase 3, instead of one bin each).
-- [x] Links between documents are rewritten (`guide.md#x` → `guide.html#x`).
+- [x] Links between documents are rewritten (`guide.md#x` -> `guide.html#x`).
       Checking that targets exist is Phase 6 link validation.
 - [x] `examples/sample-site` (`nur sample`) with `insta` snapshots of every
       page (`nur snapshots` to re-record).
 - [x] MSRV raised from 1.85 to 1.89 for `serde-saphyr` 2.x; `if let` chains
       are now available.
 
-**Exit:** a multi-page sample docs site builds and renders correctly. ✅
+**Exit:** a multi-page sample docs site builds and renders correctly. Done.
 Snapshots match on Windows and Linux (WSL). The 1.89 MSRV build itself has
 not been checked locally (toolchain not installed).
 
@@ -267,7 +267,7 @@ not been checked locally (toolchain not installed).
 handshake or dispatch. The two APIs follow each language's idioms rather than
 matching exactly.
 
-### `sdk-dynamic` ✅
+### `sdk-dynamic` (done)
 - [x] `DynamicPlugin`: value-based handlers (`Fn(Value, Context) -> Future<Result<Value>>`)
       turned into an SDK `Plugin`, so capabilities, dispatch, cancellation
       and shutdown all stay in Rust.
@@ -275,8 +275,8 @@ matching exactly.
       or a render string; `source` and `extension` filled in.
 - [x] All protocol behavior lives here or below, never in a binding.
 
-### 5a: Python (`bindings/python`) ✅
-- [x] pyo3 0.30 + maturin, one `abi3` wheel for Python ≥ 3.10.
+### 5a: Python (`bindings/python`) (done)
+- [x] pyo3 0.30 + maturin, one `abi3` wheel for Python >= 3.10.
 - [x] Decorator API: `@plugin.parse(extensions=...)`, `@plugin.collect`,
       `@plugin.transform(nodes=...)`, `@plugin.render(formats=...)`,
       `plugin.serve()`.
@@ -311,7 +311,7 @@ matching exactly.
       `package = false`) with `bindings/python` as a member, so there is one
       lockfile and one venv for all Python in the repo.
 
-### 5b: Node (`bindings/node`) ✅
+### 5b: Node (`bindings/node`) (done)
 - [x] napi-rs 3, `definePlugin({ name, parse, collect, transform, render }).serve()`.
 - [x] Handlers are weak threadsafe functions (they don't keep the event loop
       alive); sync or `async` handlers both work, and returned Promises are
@@ -352,7 +352,7 @@ matching exactly.
       since parallel sync handlers need thread-safe plugin code.
 
 **Exit:** the Python and TS `transform-toc` plugins pass the shared test suite
-and install from built wheels and npm tarballs. ✅ for both, built and
+and install from built wheels and npm tarballs. Done for both, built and
 installed locally; release wheels and npm packages are 5c.
 
 ## Phase 6: Transformers and cross-document features
@@ -360,13 +360,13 @@ installed locally; release wheels and npm packages are 5c.
 Split into three branches: 6a links, 6b navigation and sitemap, 6c syntax
 highlighting.
 
-### 6a: Links ✅
+### 6a: Links (done)
 - [x] `SiteInfo.files`: the host discovers files before starting plugins
       and sends every source file (documents and assets) in `initialize`,
       so transformers can check links to images and other assets.
 - [x] `transform-toc` nests deeper headings under the one before them (the
       Python and JS ports too).
-- [x] `transform-links` (new builtin), using `transform/collect` →
+- [x] `transform-links` (new builtin), using `transform/collect` ->
       `transform/apply`:
   - link and image checking: `broken-link` and `broken-anchor` warnings
     with spans; external URLs are not checked;
@@ -379,7 +379,7 @@ highlighting.
 - [x] `plugin_sdk::testing`: a context that drops events, and
       `run_transform`, which runs collect then apply like the host.
 
-### 6b: Navigation and sitemap ✅
+### 6b: Navigation and sitemap (done)
 - [x] `transform-nav` (new builtin): collects titles and `nav_title` /
       `nav_order` / `nav_exclude` front matter, then gives every document a
       `nav` metadata entry: a tree following the source directories (a
@@ -401,7 +401,7 @@ highlighting.
 - [ ] Follow-up: `render/site` in `sdk-dynamic` and the Python/Node
       bindings, so renderers in those languages can write site-wide files.
 
-### 6c: Syntax highlighting ✅
+### 6c: Syntax highlighting (done)
 - [x] `transform-highlight` (new builtin; decided: a transformer plugin, so
       highlighting can be swapped out). It uses `syntect` (pure-Rust
       `fancy-regex` backend) with `bat`'s syntaxes from `two-face`, since
@@ -435,9 +435,11 @@ performance feature, to be decided with the benchmarks there.
 ## Phase 8: Toward 1.0
 
 - [ ] Freeze protocol v1 and write the compatibility policy.
-- [ ] Finalize `spec/` so authors in other languages (Go, Lua, …) can implement
+- [ ] Finalize `spec/` so authors in other languages (Go, Lua, ...) can implement
       plugins without bindings.
 - [ ] Plugin authoring guide and docs site, built with lsdocs itself.
+- [ ] First-party reStructuredText parser (`parser-rst`). Needs the
+      parser-neutral cross-references decision below first.
 - [ ] Publish crates, wheels and npm packages.
 
 ---
@@ -453,3 +455,22 @@ performance feature, to be decided with the benchmarks there.
 | ~~Templating engine~~ | **Decided:** `minijinja` | Phase 4 |
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | Phase 7 |
 | ~~License~~ | **Decided:** `Apache-2.0 OR MIT` | Phase 0 |
+| Parser-neutral cross-references | structured link targets (see below) | before `parser-rst` |
+
+### Parser-neutral cross-references
+
+Today a link between documents is a plain `url` such as `guide.md#setup`.
+`transform-links` resolves those paths generically (any extension), but:
+
+- `render-html` turns a link into a page link only if it ends in `.md` or
+  `.markdown`, so `guide.rst` would not be rewritten.
+- reStructuredText references are not paths: `:doc:` names a document
+  without its extension, and `:ref:` names a label (`.. _label:`) defined
+  anywhere in the site. No URL captures those.
+
+Leaning: give `Link` an optional structured `target` (document source
+path, anchor, or an unresolved label) that parsers fill when they know a
+link is a cross-reference. `transform-links` resolves labels and checks
+targets using what it collects; renderers turn a resolved target into an
+output URL from the source path, instead of guessing by file extension.
+Plain `url`s stay for external links and as the fallback.
