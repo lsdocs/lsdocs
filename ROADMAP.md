@@ -337,6 +337,16 @@ matching exactly.
       mismatch with a clear error. (The host check exists since Phase 3; the
       packages report `PROTOCOL_VERSION`.)
 - [ ] Type-check generated `.pyi` / `.d.ts` types against the fixtures.
+- [ ] Free-threaded Python wheels. The `abi3` wheel cannot load on
+      free-threaded builds (3.13t/3.14t), so these need one version-specific
+      wheel each (`cp313t`, `cp314t`); pyo3 0.30 falls back to that
+      automatically when built against a free-threaded interpreter. From
+      Python 3.15, a single `abi3t` wheel (pyo3's `abi3t-py3*` features) can
+      cover them. The code is already free-threading-ready: pyo3 modules
+      default to `gil_used = false`, and nothing relies on the GIL for
+      correctness. Not yet run on a free-threaded build. Consider raising the
+      default `max_concurrency` there (`sys._is_gil_enabled()`), keeping 1
+      since parallel sync handlers need thread-safe plugin code.
 
 **Exit:** the Python and TS `transform-toc` plugins pass the shared test suite
 and install from built wheels and npm tarballs. ✅ for both, built and
