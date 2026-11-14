@@ -1,0 +1,21 @@
+[package]
+name = "lsdocs"
+description = "The lsdocs command-line interface."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "lsdocs"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+lsdocs-host.workspace = true
+lsdocs-config.workspace = true
+lsdocs-parser-markdown.workspace = true
+lsdocs-transform-toc.workspace = true
+lsdocs-render-html.workspace = true
