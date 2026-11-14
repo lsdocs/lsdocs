@@ -303,16 +303,27 @@ matching exactly.
 - [x] `nur test python` (in `nur ci`): builds the extension with maturin and
       runs pytest, with a venv per platform.
 
-### 5b: Node (`bindings/node`)
-- [ ] napi-rs, `definePlugin({...}).serve()` API.
-- [ ] Handlers are called via `ThreadsafeFunction`; returned Promises are
-      awaited in Rust.
-- [ ] `serve()` returns a Promise that resolves on shutdown.
-- [ ] Redirect `process.stdout.write` to stderr.
-- [ ] Testing harness for vitest.
-- [ ] `.d.ts` doctree types generated from `schema/`.
-- [ ] A TS port of `transform-toc`, byte-identical to the Rust plugin.
-- [ ] Decode every file in `fixtures/` with `@msgpack/msgpack`.
+### 5b: Node (`bindings/node`) ✅
+- [x] napi-rs 3, `definePlugin({ name, parse, collect, transform, render }).serve()`.
+- [x] Handlers are weak threadsafe functions (they don't keep the event loop
+      alive); sync or `async` handlers both work, and returned Promises are
+      awaited in Rust. Values cross as JSON strings.
+- [x] `serve()` returns a Promise that resolves on shutdown.
+- [x] `serve()` redirects `process.stdout.write` to stderr.
+- [x] `Context` (`site`, `options`, logging, progress, diagnostics). Events
+      reach the host when the handler finishes, not as they happen.
+- [x] `@lsdocs/plugin/testing`: an in-process fake host, used with the
+      built-in `node:test` runner (no vitest dependency).
+- [x] Hand-written `index.d.ts` (nodes, params, results, context); the example
+      is type-checked against it with `tsc --checkJs`.
+- [ ] `.d.ts` types generated from `schema/`.
+- [x] `examples/transform-toc.js`: a JS port of `transform-toc`, byte-identical
+      to the Rust plugin over stdio, a pipe and `runtime = "node"`.
+- [x] Every file in `fixtures/` decodes with `@msgpack/msgpack`.
+- [x] `nur test node` (in `nur ci`) builds the addon with plain cargo, since
+      napi's CLI can't write atomically on WSL's `/mnt/c`. `nur gen node`
+      regenerates the committed loader (`native.js` / `native.d.ts`).
+      Node.js comes from `PATH`, or from fnm.
 
 ### 5c: Packaging
 - [ ] Release CI: wheels and per-platform npm packages for win/mac/linux on
@@ -323,8 +334,8 @@ matching exactly.
 - [ ] Type-check generated `.pyi` / `.d.ts` types against the fixtures.
 
 **Exit:** the Python and TS `transform-toc` plugins pass the shared test suite
-and install from built wheels and npm tarballs. Python half ✅ (built and
-installed as an editable wheel; release wheels are 5c).
+and install from built wheels and npm tarballs. ✅ for both, built and
+installed locally; release wheels and npm packages are 5c.
 
 ## Phase 6: Transformers and cross-document features
 
