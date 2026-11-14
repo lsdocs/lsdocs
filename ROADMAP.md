@@ -185,27 +185,53 @@ yet run.
 **Goal:** an end-to-end build with stub plugins.
 
 ### `plugin-sdk`
-- [ ] `Parser`, `Transformer`, `Renderer` traits; capabilities derived from
-      what a plugin implements.
-- [ ] `serve(plugin)` handles the handshake, dispatch and shutdown.
-- [ ] `ctx.log()`, `ctx.diagnostic()`, and host callbacks (e.g. reading the
-      collected index).
-- [ ] Typed in-process path: the host calls a builtin plugin's traits
-      directly, with no serialization (moved from Phase 2).
+- [x] `Parser`, `Transformer`, `Renderer` traits (implementable with plain
+      `async fn`); a `Plugin` bundles any of them, and capabilities follow
+      from what it has.
+- [x] `main(plugin)` / `serve(plugin)` handle the handshake, dispatch and
+      shutdown over stdio or `LSDOCS_PIPE`. Phases a plugin lacks answer
+      "method not found"; requests before `initialize` are refused.
+- [x] `Context`: `site()`, `options()`, `log`/`info`/`warn`/`debug`,
+      `progress`, `diagnostic`. Host callbacks (plugin → host requests) are
+      not needed yet, since `transform/apply` already carries the collected
+      data; add them when a plugin needs one.
+- [x] Typed in-process path: the host calls a builtin `Plugin` directly, with
+      no serialization (moved from Phase 2).
 
 ### `host`
-- [ ] Plugin registry from config; spawn, handshake, version check, restart or
-      fail policy.
-- [ ] Sequential pipeline: discover → parse → collect → apply → render → write.
-- [ ] Routing: send only the subtrees whose node kinds a transformer claims.
-- [ ] Merge collected data between the `collect` and `apply` phases.
-- [ ] Report diagnostics with source spans.
+- [x] Plugin startup from config: builtins in-process; `command`, Python
+      (`python -m`) and Node runtimes as child processes over stdio or a
+      pipe; handshake with timeouts and protocol version check. Shutdown is
+      `shutdown` → `exit` → wait, killing a plugin that does not exit. A
+      plugin that fails to start fails the build (no restart policy yet).
+- [x] Sequential pipeline: discover → parse → collect → apply → render →
+      write. Files no parser claims are copied as assets; hidden files are
+      skipped; `files` globs limit what a plugin sees.
+- [x] Routing: a transformer only receives documents containing a node kind
+      it selects. Sending just the matching subtrees moves to Phase 6,
+      alongside patch-based responses.
+- [x] Collected data is merged per document (`{source: data}`) between the
+      `collect` and `apply` passes.
+- [x] Diagnostics are reported as `severity[code]: file:line:col: message`;
+      any error diagnostic makes `lsdocs build` exit non-zero.
 
 ### `cli`
-- [ ] `lsdocs build`, `lsdocs init`, with `--config` and `--trace-rpc` flags.
+- [x] `lsdocs build` (`--config`, `--source-dir`, `--output-dir`,
+      `--base-url`), `lsdocs init`, global `-v`/`-vv` and `--trace-rpc`.
+      `LSDOCS_LOG` overrides log filtering.
+- [x] Hidden `lsdocs plugin <name>` serves a builtin out-of-process, so every
+      first-party plugin has an out-of-process form without its own binary.
 
-**Exit:** `lsdocs build` runs a stub parser, a transformer and a renderer, both
-in-process and out-of-process, with identical output.
+### First-party plugins (minimal versions)
+- [x] `parser-markdown`: front matter, headings, fenced code, paragraphs.
+      Inline markup is plain text until Phase 4.
+- [x] `transform-toc`: collects headings, inserts a `custom:toc` list of
+      links; `depth` option.
+- [x] `render-html`: standalone escaped HTML pages covering every node kind.
+
+**Exit:** `lsdocs build` runs a parser, a transformer and a renderer
+in-process, over stdio and over a pipe, with byte-identical output. ✅ on
+Windows and Linux (WSL).
 
 ## Phase 4: First real site
 
@@ -213,9 +239,11 @@ in-process and out-of-process, with identical output.
 
 - [ ] `parser-markdown`: wraps `comrak` or `pulldown-cmark`, maps to doctree,
       front matter, accurate spans.
-- [ ] `render-html`: `minijinja` templates, a default theme, asset copying.
-- [ ] Each plugin ships as a lib (in-process) and an optional bin
-      (out-of-process).
+- [ ] `render-html`: `minijinja` templates, a default theme. (Asset copying
+      is done by the host since Phase 3.)
+- [x] Each plugin ships as a lib (in-process) and runs out-of-process via
+      `lsdocs plugin <name>` (done in Phase 3, instead of one bin each).
+- [ ] Rewrite links between documents (`guide.md` → `guide.html`).
 - [ ] Snapshot tests (`insta`) on a sample site.
 
 **Exit:** a multi-page sample docs site builds and renders correctly.

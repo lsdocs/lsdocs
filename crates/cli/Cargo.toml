@@ -15,8 +15,13 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
-lsdocs-host.workspace = true
+clap.workspace = true
 lsdocs-config.workspace = true
+lsdocs-host.workspace = true
 lsdocs-parser-markdown.workspace = true
-lsdocs-transform-toc.workspace = true
+lsdocs-plugin-sdk.workspace = true
 lsdocs-render-html.workspace = true
+lsdocs-transform-toc.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
