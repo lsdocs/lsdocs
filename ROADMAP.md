@@ -72,7 +72,8 @@ graph.
 - [x] Cargo workspace with all crates stubbed, shared `[workspace.package]` and
       `[workspace.dependencies]`.
 - [x] `rust-toolchain.toml`, `rustfmt.toml`, clippy config (workspace lints).
-      MSRV is 1.85, the minimum for edition 2024.
+      MSRV is 1.89 (raised from 1.85, the edition 2024 minimum, in Phase 4
+      for `serde-saphyr` 2.x).
 - [x] Dev tasks are nushell scripts run through `nur` (`nurfile`, `scripts/`).
       `nur ci` runs the local subset of CI.
 - [x] CI on Windows, macOS and Linux: fmt, clippy, test, script tests, MSRV
@@ -237,16 +238,28 @@ Windows and Linux (WSL).
 
 **Goal:** Markdown in, HTML out.
 
-- [ ] `parser-markdown`: wraps `comrak` or `pulldown-cmark`, maps to doctree,
-      front matter, accurate spans.
-- [ ] `render-html`: `minijinja` templates, a default theme. (Asset copying
-      is done by the host since Phase 3.)
+- [x] `parser-markdown` on `pulldown-cmark`: CommonMark plus tables and task
+      lists, every node with its byte span. YAML (`---`) or TOML (`+++`) front
+      matter, with invalid front matter reported as a warning. Heading ids
+      from `{#id}` or a unique slug. Raw HTML becomes `raw` nodes.
+- [x] `render-html`: a `minijinja` page template with a built-in default theme
+      (light/dark, no external assets), or a custom one via the `template`
+      option, resolved against the site root. (Asset copying is done by the
+      host since Phase 3.)
+- [x] `SiteInfo.root` added to the protocol, so plugins can resolve paths
+      from their options even when running in-process.
 - [x] Each plugin ships as a lib (in-process) and runs out-of-process via
       `lsdocs plugin <name>` (done in Phase 3, instead of one bin each).
-- [ ] Rewrite links between documents (`guide.md` → `guide.html`).
-- [ ] Snapshot tests (`insta`) on a sample site.
+- [x] Links between documents are rewritten (`guide.md#x` → `guide.html#x`).
+      Checking that targets exist is Phase 6 link validation.
+- [x] `examples/sample-site` (`nur sample`) with `insta` snapshots of every
+      page (`nur snapshots` to re-record).
+- [x] MSRV raised from 1.85 to 1.89 for `serde-saphyr` 2.x; `if let` chains
+      are now available.
 
-**Exit:** a multi-page sample docs site builds and renders correctly.
+**Exit:** a multi-page sample docs site builds and renders correctly. ✅
+Snapshots match on Windows and Linux (WSL). The 1.89 MSRV build itself has
+not been checked locally (toolchain not installed).
 
 ## Phase 5: Python and Node.js bindings
 
@@ -327,10 +340,10 @@ and install from built wheels and npm tarballs.
 
 | Decision | Leaning | Decide by |
 |---|---|---|
-| msgpack-rpc envelope vs. custom envelope | msgpack-rpc | Phase 2 |
-| Framing: length-prefixed vs. bare msgpack | length prefix, bare optional | Phase 2 |
-| Tree representation: nested vs. arena | nested first | Phase 1 |
-| Markdown backend: `comrak` vs. `pulldown-cmark` | spike both | Phase 4 |
-| Templating engine | `minijinja` | Phase 4 |
+| ~~Envelope~~ | **Decided:** msgpack-rpc | Phase 2 |
+| ~~Framing~~ | **Decided:** u32 length prefix; bare msgpack only if needed | Phase 2 |
+| ~~Tree representation~~ | **Decided:** nested; revisit for patches | Phase 1 |
+| ~~Markdown backend~~ | **Decided:** `pulldown-cmark` (byte-offset spans map directly to `Span`) | Phase 4 |
+| ~~Templating engine~~ | **Decided:** `minijinja` | Phase 4 |
 | Transformers: whole tree vs. patches | whole tree, patches later | Phase 6 |
 | ~~License~~ | **Decided:** `Apache-2.0 OR MIT` | Phase 0 |

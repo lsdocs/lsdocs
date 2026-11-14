@@ -247,6 +247,9 @@ pub async fn build(
         site: SiteInfo {
             title: config.title.clone(),
             base_url: config.base_url.clone(),
+            root: std::path::absolute(root)
+                .ok()
+                .map(|p| p.to_string_lossy().into_owned()),
         },
         options: Value::Null,
     };

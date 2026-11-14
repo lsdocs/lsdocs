@@ -40,7 +40,7 @@ fn write_content(site: &Path) {
     let docs = site.join("docs");
     write(
         &docs.join("index.md"),
-        "---\ntitle: Home\n---\n# Welcome\n\nHello & <welcome>.\n\n## Install\n\nSteps.\n\n## Use\n\n```sh\nlsdocs build\n```\n",
+        "---\ntitle: Home\n---\n# Welcome\n\nHello & 1 < 2.\n\n## Install\n\nSteps.\n\n## Use\n\n```sh\nlsdocs build\n```\n",
     );
     write(
         &docs.join("guide/intro.md"),
@@ -138,7 +138,7 @@ fn in_process_and_out_of_process_builds_match() {
 
     let index = String::from_utf8(in_process["index.html"].clone()).unwrap();
     assert!(index.contains("<title>Home | Test Site</title>"), "{index}");
-    assert!(index.contains("Hello &amp; &lt;welcome&gt;."), "{index}");
+    assert!(index.contains("Hello &amp; 1 &lt; 2."), "{index}");
     assert!(
         index.contains("<div class=\"toc\">"),
         "the TOC is missing:\n{index}"
@@ -149,7 +149,7 @@ fn in_process_and_out_of_process_builds_match() {
     );
     let intro = String::from_utf8(in_process["guide/intro.html"].clone()).unwrap();
     assert!(
-        !intro.contains("toc"),
+        !intro.contains("<div class=\"toc\">"),
         "single-heading pages get no TOC:\n{intro}"
     );
 
