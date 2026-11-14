@@ -398,8 +398,8 @@ highlighting.
       source links to outputs.
 - [x] Shared helpers: `doctree::plain_text`, `Document::title` and
       `plugin_sdk::relative_path` replace copies in the plugins.
-- [ ] Follow-up: `render/site` in `sdk-dynamic` and the Python/Node
-      bindings, so renderers in those languages can write site-wide files.
+- `render/site` support in `sdk-dynamic` and the bindings moved to
+  Phase 7.
 
 ### 6c: Syntax highlighting (done)
 - [x] `transform-highlight` (new builtin; decided: a transformer plugin, so
@@ -419,6 +419,58 @@ highlighting.
 Patch-based `transform` responses moved to Phase 7 (decided): they are a
 performance feature, to be decided with the benchmarks there.
 
+### 6d: Parser/transformer contract
+
+**Goal:** what a parser hands to transformers is the same shape whatever the
+source format, so a reStructuredText parser (Phase 8) or a third-party
+parser works with every first-party transformer and renderer unchanged.
+Today the contract is implicit and Markdown-shaped: flat headings, ids
+slugged by the Markdown parser, cross-document links as `.md` URLs, and no
+nodes for admonitions, footnotes and the like.
+
+Decided:
+
+- **Nested sections are canonical.** Parsers wrap content in `section`
+  nodes: the section's title heading first, its subsections nested inside.
+  The anchor id lives on the `section`; `heading.id` remains only for
+  headings outside the section tree (e.g. inside a block quote).
+- **The host assigns generated ids.** Parsers set only explicit ids
+  (`{#id}`, RST labels). After parsing, the host gives every section (and
+  stray heading) without an id a slug of its title, unique within the
+  document, the same way for every format and plugin language. The slug
+  rules move from `parser-markdown` to the host and into `spec/`.
+- **Common constructs become core node kinds:** `admonition` (`kind`,
+  optional title), definition lists, footnote references and definitions,
+  `math` (inline or display), `figure` (content plus caption), and
+  `anchor` (a zero-width link target, e.g. an RST label before a
+  paragraph). Format-specific extras stay `custom:*`.
+- **Links carry structured targets.** `Link` gains an optional `target`:
+  a document (source path) and/or an anchor, or an unresolved label. The
+  host fills `target.document` for any relative `url` that resolves to a
+  parsed document, so parsers need no path logic; RST's `:doc:`/`:ref:`
+  set it directly. `transform-links` resolves labels site-wide; renderers
+  map a target's document to its output path instead of guessing from the
+  `.md` extension. `url` stays for external links.
+
+Steps (one branch each, in order):
+
+- [ ] 6d-1 Doctree and protocol: `section` as described, the new node
+      kinds, `Link.target`; schemas, fixtures, `spec/` and the bindings'
+      type declarations (`index.d.ts`) updated.
+- [ ] 6d-2 Host normalization after parse: slug ids (moved from the
+      parser), `Link.target` for relative links to documents, a warning for
+      duplicate explicit ids.
+- [ ] 6d-3 `parser-markdown`: build sections from heading levels; GitHub
+      alerts (`> [!NOTE]`) as admonitions; footnotes, definition lists and
+      math via `pulldown-cmark` options; no more slugging.
+- [ ] 6d-4 Transformers: `transform-toc` walks sections (and its Python
+      and JS ports), `transform-links` uses targets, section ids and
+      `anchor` nodes and resolves labels, `transform-nav` takes titles from
+      sections.
+- [ ] 6d-5 `render-html`: `<section id>`, anchor links on section titles,
+      the new node kinds, output URLs from link targets; snapshots
+      re-recorded and reviewed.
+
 ## Phase 7: Developer experience and performance
 
 - [ ] Parallel parse and render across documents, respecting each plugin's
@@ -428,6 +480,9 @@ performance feature, to be decided with the benchmarks there.
       cross-document dependencies from the collect phase.
 - [ ] `lsdocs serve`: file watching, dev server, live reload.
 - [ ] Benchmarks: in-process vs. out-of-process cost, tree size vs. latency.
+- [ ] `render/site` in `sdk-dynamic` and the Python/Node bindings, so
+      renderers in those languages can write site-wide files (moved from
+      Phase 6b).
 - [ ] Optional patch-based `transform` responses, and sending transformers
       only the subtrees they select, if the benchmarks show tree size
       matters (moved from Phase 6).
@@ -438,8 +493,8 @@ performance feature, to be decided with the benchmarks there.
 - [ ] Finalize `spec/` so authors in other languages (Go, Lua, ...) can implement
       plugins without bindings.
 - [ ] Plugin authoring guide and docs site, built with lsdocs itself.
-- [ ] First-party reStructuredText parser (`parser-rst`). Needs the
-      parser-neutral cross-references decision below first.
+- [ ] First-party reStructuredText parser (`parser-rst`), on top of the
+      Phase 6d contract.
 - [ ] Publish crates, wheels and npm packages.
 
 ---
@@ -455,9 +510,10 @@ performance feature, to be decided with the benchmarks there.
 | ~~Templating engine~~ | **Decided:** `minijinja` | Phase 4 |
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | Phase 7 |
 | ~~License~~ | **Decided:** `Apache-2.0 OR MIT` | Phase 0 |
-| Parser-neutral cross-references | structured link targets (see below) | before `parser-rst` |
+| ~~Parser-neutral cross-references~~ | **Decided:** structured link targets; see Phase 6d | Phase 6d |
+| ~~Canonical document shape~~ | **Decided:** nested sections, host-generated ids, more core node kinds; see Phase 6d | Phase 6d |
 
-### Parser-neutral cross-references
+### Parser-neutral cross-references (background for 6d)
 
 Today a link between documents is a plain `url` such as `guide.md#setup`.
 `transform-links` resolves those paths generically (any extension), but:
@@ -468,9 +524,9 @@ Today a link between documents is a plain `url` such as `guide.md#setup`.
   without its extension, and `:ref:` names a label (`.. _label:`) defined
   anywhere in the site. No URL captures those.
 
-Leaning: give `Link` an optional structured `target` (document source
-path, anchor, or an unresolved label) that parsers fill when they know a
-link is a cross-reference. `transform-links` resolves labels and checks
+Decided (Phase 6d): give `Link` an optional structured `target` (document
+source path, anchor, or an unresolved label), filled by the host for
+relative links to documents and by parsers for format-specific references. `transform-links` resolves labels and checks
 targets using what it collects; renderers turn a resolved target into an
 output URL from the source path, instead of guessing by file extension.
 Plain `url`s stay for external links and as the fallback.
