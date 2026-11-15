@@ -617,11 +617,22 @@ Decided:
 - Problems are reported the docutils way, as `system_message` nodes (with
   spans), never as a failed parse.
 
-### 8a: Foundation
-- [ ] The crate, the docutils-style node model with spans, a pseudo-XML
-      printer matching docutils' output format.
-- [ ] The conformance harness (`nur gen rst`, `nur test rst` or part of
-      `nur test`), starting with a handful of cases.
+### 8a: Foundation (done)
+- [x] The crate (`crates/rst`, `lsdocs-rst`, no dependencies at all), the
+      docutils-style node model (`Element` with a `Kind`, sorted
+      `Attributes` and children; `Text`; a byte `Span` on every node), and
+      a pseudo-XML printer that matches docutils' byte for byte.
+- [x] Input handling as docutils does it (`string2lines`): Python's line
+      boundaries, tabs to 8-column stops, vertical tab and form feed as
+      spaces, trailing whitespace removed, while spans keep pointing into
+      the original text.
+- [x] The conformance harness: `nur gen rst` runs docutils 0.23 (pinned,
+      via `uv run --no-project`) on `crates/rst/tests/cases/*.rst` and
+      writes `.pxml` files; `tests/conformance.rs` compares, with
+      `cases/PENDING` listing cases expected to fail (a pending case that
+      starts passing fails the test). It runs in `cargo test`, no Python.
+- [x] A minimal parser (paragraphs only) to prove the loop: 6 of 12 cases
+      match docutils; the 6 pending ones are 8b and 8c work.
 
 ### 8b: Block structure
 - [ ] Sections (underline and overline adornments, the title hierarchy
