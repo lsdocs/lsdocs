@@ -298,7 +298,7 @@ fn config_errors_are_reported() {
     assert!(!output.status.success());
     let err = stderr(&output);
     assert!(
-        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: parser-markdown, render-html, transform-highlight, transform-links, transform-nav, transform-toc)"),
+        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: parser-markdown, parser-rst, render-html, transform-highlight, transform-links, transform-nav, transform-toc)"),
         "{err}"
     );
 

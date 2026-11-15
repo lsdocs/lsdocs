@@ -808,9 +808,35 @@ Decided:
   HTML writer reads it).
 
 ### 8e: The lsdocs plugin
-- [ ] `parser-rst`: converts the RST tree to the shared document shape
-      (sections, admonitions, footnotes, math, figures, `:doc:` and
-      `:ref:` as link targets), a sample-site page, docs.
+- [x] `parser-rst` (`plugins/parser-rst`): parses with `lsdocs-rst`
+      (docutils' transforms on, `doctitle` off as in Sphinx, unknown
+      directives kept) and converts the tree to the shared shape:
+      sections, admonitions, footnotes and citations, math, figures
+      (a table title becomes a caption), definition, field and option
+      lists as definition lists, line blocks as paragraphs with breaks;
+      topics, sidebars, rubrics, containers and unknown directives as
+      `custom` nodes (a directive's `argument`, `options` and `content`
+      as attributes). Leading bibliographic fields become metadata (a
+      `title` field names the page). docutils' messages become
+      diagnostics, including those its transforms keep out of the tree.
+      `include` and the `:file:` options read from the source directory
+      (option `file_access`, default on; caching is off while it is).
+      A sample-site page (`reference/rst.rst`), in the snapshots.
+- Decision: ids. Labels and `:name:` become ids as docutils makes them
+  (`My Label` is `my-label`); a section without a label keeps docutils'
+  id only if a reference in the document points to it, else the host
+  gives it one, as for Markdown.
+- Decision: `:ref:` and `:doc:` come from Sphinx. `:ref:` makes a link
+  with an unresolved `label` (made into an id the same way), resolved by
+  `transform-links`; `:doc:` links to `<path>.rst`, relative to the
+  document or, with a leading `/`, to the source directory. Without
+  link text, `transform-links` fills in the target's title.
+- Protocol: `SiteInfo` gained `source_dir` (the source directory's
+  absolute path), which `parser-rst` reads included files from.
+  `lsdocs-rst` gained `Parser::doctitle`, `Parser::parse_with_messages`
+  and `make_id` for the plugin.
+- Follow-up: `transform-links` backlinks do not count `:ref:` links,
+  since labels are resolved only in its apply pass.
 
 ## Phase 9: Toward 1.0
 

@@ -99,6 +99,7 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <li><span>Reference</span>
 <ul>
 <li><a href="reference/cli.html">CLI reference</a></li>
+<li><a href="reference/rst.html">reStructuredText</a></li>
 </ul></li>
 </ul>
 </nav>

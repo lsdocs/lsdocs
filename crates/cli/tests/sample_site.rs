@@ -65,6 +65,7 @@ fn sample_site_output() {
             "img/logo.svg",
             "index.html",
             "reference/cli.html",
+            "reference/rst.html",
             "sitemap.xml",
         ]
     );

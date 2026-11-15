@@ -99,6 +99,7 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <li><span>Reference</span>
 <ul>
 <li><a href="cli.html" aria-current="page">CLI reference</a></li>
+<li><a href="rst.html">reStructuredText</a></li>
 </ul></li>
 </ul>
 </nav>
@@ -147,6 +148,7 @@ line two after a hard break.</p>
 
 <nav class="pager" aria-label="Pages">
 <a class="prev" href="../guide/configuration.html">&larr; Configuration</a>
+<a class="next" href="rst.html">reStructuredText &rarr;</a>
 </nav>
 </main>
 </div>

@@ -437,6 +437,9 @@ fn initialize_params(config: &Config, root: &Path, files: Vec<String>) -> Initia
             root: std::path::absolute(root)
                 .ok()
                 .map(|p| p.to_string_lossy().into_owned()),
+            source_dir: std::path::absolute(root.join(&config.source_dir))
+                .ok()
+                .map(|p| p.to_string_lossy().into_owned()),
             files,
         },
         options: Value::Null,

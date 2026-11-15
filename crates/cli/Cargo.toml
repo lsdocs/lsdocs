@@ -19,6 +19,7 @@ clap.workspace = true
 lsdocs-config.workspace = true
 lsdocs-host.workspace = true
 lsdocs-parser-markdown.workspace = true
+lsdocs-parser-rst.workspace = true
 lsdocs-plugin-sdk.workspace = true
 lsdocs-render-html.workspace = true
 lsdocs-transform-highlight.workspace = true
