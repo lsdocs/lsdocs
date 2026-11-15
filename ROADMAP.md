@@ -572,10 +572,15 @@ in `lsdocs serve` (7c).
     `Connection: close`) instead of an HTTP framework. It is for local
     development, never production.
 
-### 7d: Bindings
-- [ ] `render/site` in `sdk-dynamic` and the Python/Node bindings, so
+### 7d: Bindings (done)
+- [x] `render/site` in `sdk-dynamic` and the Python/Node bindings, so
       renderers in those languages can write site-wide files (moved from
-      Phase 6b).
+      Phase 6b): `@plugin.render_site` in Python, `renderSite` in
+      `definePlugin` in Node, and `testing.render_site` /
+      `testing.renderSite`. A handler may return just the list of files;
+      each file's `output` may be text or bytes.
+
+Phase 7 is complete.
 
 ## Phase 8: Toward 1.0
 
