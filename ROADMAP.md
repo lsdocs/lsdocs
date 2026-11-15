@@ -779,13 +779,33 @@ Decided:
   10 s per document and reports such documents as skipped.
 
 ### 8d-4: File access
-- [ ] A way for callers to let directives read files: `include` (with
-      its line and text clipping options and `:literal:`/`:code:`),
-      `raw :file:`, `csv-table :file:`, and `figure :figwidth: image`.
-      Planned as a loader the caller passes to the `Parser` (paths
-      relative to the including document, no URL fetching unless the
-      loader does it); without one, these behave as docutils does with
-      `file_insertion_enabled` off, as now.
+- [x] `Parser::file_loader` takes a `FileLoader` (`read_file`, and
+      `read_url`, which refuses by default; any `Fn(&str) ->
+      io::Result<Vec<u8>>` is one; `DirectoryLoader` reads from a
+      directory). With it: `include` (clipping options, `:literal:`,
+      `:code:`, `:number-lines:`, `:tab-width:`, `:encoding:`, nested
+      includes relative to the including file, circular inclusion),
+      `raw` and `csv-table` with `:file:` or `:url:`, and `figure
+      :figwidth: image` (PNG, GIF, JPEG, BMP and WebP widths read from
+      the header, as Pillow gives them). Without one, these behave as
+      docutils does with `file_insertion_enabled` off, as before.
+      Conformance cases named `file_*` run with file access (files in
+      `tests/cases/files/`); `nur gen rst` installs Pillow, pinned
+      (`PILLOW` in the `nurfile`), so docutils reads image sizes too.
+- Decision: nodes from an included file get an empty span at the start of
+  the `include` directive (the outermost one, for nested includes), so
+  spans always point into the text given to `parse`; messages about
+  included text name the included file and its line, as docutils' do.
+- How: input lines now carry their origin (file and line), like the items
+  of docutils' `StringList`, and machines share their line lists; lines
+  an `include` inserts go into every list they were taken from, as
+  docutils' `ViewList` propagates them, and `nested_parse` skips them in
+  the parent. Messages look their line up in the top-level list, as
+  docutils' reporter does.
+- Not done: `include :parser:` (an error says so), docutils' standard
+  include files (`<isonum.txt>` and the like: the path goes to the loader
+  as written), and the `image` directive's `:scale:` size (only docutils'
+  HTML writer reads it).
 
 ### 8e: The lsdocs plugin
 - [ ] `parser-rst`: converts the RST tree to the shared document shape
