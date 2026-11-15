@@ -665,12 +665,35 @@ Decided:
 - Deviations: tables are not recognized yet (8d), so their lines parse as
   text; spans inside tab-indented lines can be off by the tab's width.
 
-### 8c: Inline markup
-- [ ] Docutils' inline markup recognition rules (start and end strings,
+### 8c: Inline markup (done)
+- [x] Docutils' inline markup recognition rules (start and end strings,
       whitespace and punctuation), escapes, emphasis, strong, literal,
       interpreted text and roles, hyperlink references (named, anonymous,
-      embedded URIs), inline targets, footnote, citation and substitution
-      references, standalone URIs.
+      embedded URIs and aliases), inline targets, footnote, citation and
+      substitution references, standalone URIs and email addresses.
+- [x] The standard roles under their English names (`emphasis`, `code`,
+      `math`, `sub`, `pep`, `rfc`, ...), with docutils' messages for
+      unknown, unimplemented and option-less (`raw`) roles. Roles with
+      options come with the `role` directive in 8d.
+- How: a port of docutils' `Inliner`, again with hand-written matchers in
+  docutils' backtracking order. The character classes the recognition
+  rules use (openers, closers, delimiters, Python's `\w` and `\s`) and
+  the URI schemes are generated from docutils and Python by
+  `scripts/rst-tables.py` into `src/tables.rs` (part of `nur gen rst`),
+  so they match exactly. Text nodes keep escapes as nulls while parsing,
+  as docutils does, and lose them when the parse ends. Inline nodes have
+  spans into the source.
+- Found on the way, and matched: docutils adds a duplicate-name message
+  to its parent only if that element may contain body elements (so not
+  to a line block); a line block's first line is parsed in the block's
+  parent.
+- Results: 57 conformance cases, 56 matching (the pending one is real
+  directives). `nur fuzz rst` now mixes sentences of inline markup into
+  the block fragments and no longer skips anything: 16,000 documents
+  over nine seeds, all matching.
+- PEP and RFC references in plain text (`PEP 8`) stay off, as in
+  docutils' defaults; settings to turn them on can come with the
+  parser options later.
 
 ### 8d: Tables, directives and transforms
 - [ ] Grid and simple tables.
