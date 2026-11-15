@@ -696,7 +696,15 @@ Decided:
   parser options later.
 
 ### 8d: Tables, directives and transforms
-- [ ] Grid and simple tables.
+- [x] Grid and simple tables (8d-1): docutils' `tableparser` and table
+      isolation ported, including its malformed-table messages and its
+      East Asian width padding. Widths and combining characters now come
+      from Python's `unicodedata` (generated tables) instead of a
+      hand-written approximation. 62 conformance cases, 61 matching; the
+      fuzzer has table fragments, and 18,000 documents match. A new test
+      feeds the parser random character soup to check it never panics
+      (docutils' table code backs up past a table's start in one case,
+      and its line arithmetic then goes negative; we follow it there).
 - [ ] The directive and role registry with the standard set.
 - [ ] Transforms: resolving targets and references, footnote numbering,
       substitutions, anonymous references; conformance after transforms.
