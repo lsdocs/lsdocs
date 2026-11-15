@@ -737,8 +737,35 @@ Decided:
       as a field list, content as a literal block) instead of docutils'
       messages. 71 conformance cases, all matching; 10,000 more fuzzed
       documents with table directives match.
-- [ ] Transforms: resolving targets and references, footnote numbering,
-      substitutions, anonymous references; conformance after transforms.
+- [x] Transforms, part one (8d-3a): `Parser::transforms(true)` runs
+      docutils' transforms after parsing, in docutils' priority order:
+      substitutions, target propagation, anonymous and indirect
+      hyperlinks, footnote numbering and symbols, external and internal
+      targets, transitions, dangling references, and the `class`
+      directive's pending element. Off by default, like docutils' parser
+      alone. As in `publish_doctree`, the transforms' own messages stay
+      out of the tree; the `problematic` elements replacing bad references
+      point to them by id, and the ids are numbered as docutils numbers
+      them. `nur gen rst` also writes each case's transformed tree
+      (`.tpxml`), compared by a second conformance test with its own
+      `cases/PENDING-TRANSFORMS`; `nur fuzz rst --transforms` compares
+      transformed trees. 65 of 71 cases match after transforms; every
+      fuzz mismatch left needs the transforms of 8d-3b.
+- Found and matched: docutils keeps the nodes it noted while parsing even
+  when they never reach the tree (a directive's title parsed and then
+  discarded with the directive), and its transforms still report them.
+- [ ] 8d-3b: the document title and subtitle, docinfo, `contents`,
+      `sectnum`, `target-notes`; then conformance after transforms for
+      every case.
+
+### 8d-4: File access
+- [ ] A way for callers to let directives read files: `include` (with
+      its line and text clipping options and `:literal:`/`:code:`),
+      `raw :file:`, `csv-table :file:`, and `figure :figwidth: image`.
+      Planned as a loader the caller passes to the `Parser` (paths
+      relative to the including document, no URL fetching unless the
+      loader does it); without one, these behave as docutils does with
+      `file_insertion_enabled` off, as now.
 
 ### 8e: The lsdocs plugin
 - [ ] `parser-rst`: converts the RST tree to the shared document shape
