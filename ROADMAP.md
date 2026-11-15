@@ -754,9 +754,29 @@ Decided:
 - Found and matched: docutils keeps the nodes it noted while parsing even
   when they never reach the tree (a directive's title parsed and then
   discarded with the directive), and its transforms still report them.
-- [ ] 8d-3b: the document title and subtitle, docinfo, `contents`,
-      `sectnum`, `target-notes`; then conformance after transforms for
-      every case.
+- [x] Transforms, part two (8d-3b): the document title and subtitle
+      (a lone top-level section, and a lone subsection, are promoted;
+      the document gets their ids and names and a `title` attribute),
+      docinfo (a leading field list's bibliographic fields, authors
+      split on `;` or `,`, RCS keywords cleaned, the dedication and
+      abstract topics, docutils' warnings for fields it cannot convert),
+      and the `contents`, `sectnum` and `target-notes` pending elements.
+      74 conformance cases, all matching after transforms too
+      (`cases/PENDING-TRANSFORMS` is empty).
+- Found and matched: docutils' footnote transform also numbers and links
+  references noted in text it parsed and then discarded (a paragraph
+  first tried as a list item), which uses up labels and ids; the
+  transforms now act on the copies of such nodes too (kept up to date,
+  including the duplicate names given to them while parsing). The `class`
+  directive's "No suitable element" error has a line only when its
+  parent was already in the document; otherwise docutils' reporter
+  takes the line where the top-level parser stopped, or prints
+  `line="True"` (a `None` attribute) when that lookup fails.
+- docutils bug: with `target-notes`, a paragraph holding both a
+  reference with an embedded URI and its target makes `TargetNotes` loop
+  forever (it inserts the footnote reference before the target it is
+  iterating over). lsdocs-rst finishes; `nur fuzz rst` now gives docutils
+  10 s per document and reports such documents as skipped.
 
 ### 8d-4: File access
 - [ ] A way for callers to let directives read files: `include` (with
