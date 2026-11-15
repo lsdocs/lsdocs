@@ -618,7 +618,7 @@ Decided:
   spans), never as a failed parse.
 
 ### 8a: Foundation (done)
-- [x] The crate (`crates/rst`, `lsdocs-rst`, no dependencies at all), the
+- [x] The crate (`crates/rst`, `lsdocs-rst`, no dependencies), the
       docutils-style node model (`Element` with a `Kind`, sorted
       `Attributes` and children; `Text`; a byte `Span` on every node), and
       a pseudo-XML printer that matches docutils' byte for byte.
@@ -634,14 +634,36 @@ Decided:
 - [x] A minimal parser (paragraphs only) to prove the loop: 6 of 12 cases
       match docutils; the 6 pending ones are 8b and 8c work.
 
-### 8b: Block structure
-- [ ] Sections (underline and overline adornments, the title hierarchy
-      learned from the document), paragraphs, block quotes, bullet,
-      enumerated, definition, field and option lists, literal blocks
-      (`::`, indented and quoted), line blocks, doctest blocks,
-      transitions, comments.
-- [ ] Explicit markup: footnotes, citations, hyperlink targets,
-      substitution definitions, and directives as generic nodes.
+### 8b: Block structure (done)
+- [x] Sections (underline and overline adornments, the title hierarchy
+      learned from the document), paragraphs, block quotes with
+      attributions, bullet, enumerated, definition, field and option
+      lists, literal blocks (`::`, indented and quoted), line blocks,
+      doctest blocks, transitions, comments.
+- [x] Explicit markup: footnotes, citations, hyperlink targets (named,
+      anonymous, indirect), substitution definitions, and directives,
+      which are reported as unknown (with docutils' own messages) until
+      the registry in 8d.
+- [x] Names and ids as docutils assigns them while parsing (implicit and
+      explicit targets, duplicates as `dupnames` with their messages,
+      `footnote-1`-style generated ids), and docutils' system messages
+      with the same text, levels and line numbers.
+- How: a port of docutils' state machine (`states.py`,
+  `statemachine.py`) rather than a new design: the same states,
+  transitions, nested machines and corrections, so edge cases (unindent
+  warnings, short underlines, title style errors) come out the same. The
+  line patterns are hand-written matchers (`src/patterns.rs`) instead of
+  regular expressions: no regex dependency, and Python's lookarounds and
+  backtracking order are spelled out. The one dependency is
+  `unicode-normalization`, for docutils' NFKD-based ids and its
+  combining-character column widths.
+- Results: 52 conformance cases, 50 matching docutils byte for byte (the
+  2 pending are inline markup and real directives). `nur fuzz rst`
+  compares random block-level documents with docutils; about 8,000 of
+  them, over seven seeds, all match (documents with inline markup are
+  skipped until 8c).
+- Deviations: tables are not recognized yet (8d), so their lines parse as
+  text; spans inside tab-indented lines can be off by the tab's width.
 
 ### 8c: Inline markup
 - [ ] Docutils' inline markup recognition rules (start and end strings,
