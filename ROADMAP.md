@@ -582,14 +582,80 @@ in `lsdocs serve` (7c).
 
 Phase 7 is complete.
 
-## Phase 8: Toward 1.0
+## Phase 8: reStructuredText
+
+**Goal:** a reStructuredText parser written in Rust that is useful on its
+own, outside lsdocs, plus the `parser-rst` plugin built on it. Moved ahead
+of the 1.0 work (decided): freezing the protocol now would slow early
+development, and an open-source Rust RST parser fills a gap the wider
+community has. Existing crates (`rst`/`rst_parser`, `oak-rst`, `parserst`,
+`docutils-core`) are early or incomplete.
+
+Decided:
+
+- **A standalone library crate** (`crates/rst`, working name `lsdocs-rst`,
+  `publish = false` until a neutral name is chosen and checked on
+  crates.io). It depends on nothing from lsdocs, and as little else as
+  possible. The lsdocs plugin converts its tree to the lsdocs doctree.
+- **The tree mirrors docutils' doctree**: the same node kinds and
+  attributes (`section`, `title`, `paragraph`, `bullet_list`,
+  `field_list`, `target`, `reference`, `system_message`, ...), plus a
+  byte span on every node. Familiar to RST and Sphinx users, and directly
+  comparable with docutils.
+- **Conformance is tested against docutils.** A dev-only harness (uv +
+  docutils) parses test inputs with docutils and writes its pseudo-XML
+  next to them (`nur gen rst`, committed like `fixtures/`); the Rust tests
+  print our tree the same way and compare, so `cargo test` needs no
+  Python. First against docutils' parser output before transforms, later
+  after them. Docutils is never a runtime dependency.
+- **Directives and roles: built-ins plus a registry.** The standard
+  docutils directives and roles are built in (admonitions, `code`,
+  `image`, `figure`, `math`, `contents`, ...), and callers can register
+  more. Unknown ones become a generic node keeping the name, arguments,
+  options and raw content, so callers (the lsdocs plugin, Sphinx-style
+  tools) can handle them.
+- Problems are reported the docutils way, as `system_message` nodes (with
+  spans), never as a failed parse.
+
+### 8a: Foundation
+- [ ] The crate, the docutils-style node model with spans, a pseudo-XML
+      printer matching docutils' output format.
+- [ ] The conformance harness (`nur gen rst`, `nur test rst` or part of
+      `nur test`), starting with a handful of cases.
+
+### 8b: Block structure
+- [ ] Sections (underline and overline adornments, the title hierarchy
+      learned from the document), paragraphs, block quotes, bullet,
+      enumerated, definition, field and option lists, literal blocks
+      (`::`, indented and quoted), line blocks, doctest blocks,
+      transitions, comments.
+- [ ] Explicit markup: footnotes, citations, hyperlink targets,
+      substitution definitions, and directives as generic nodes.
+
+### 8c: Inline markup
+- [ ] Docutils' inline markup recognition rules (start and end strings,
+      whitespace and punctuation), escapes, emphasis, strong, literal,
+      interpreted text and roles, hyperlink references (named, anonymous,
+      embedded URIs), inline targets, footnote, citation and substitution
+      references, standalone URIs.
+
+### 8d: Tables, directives and transforms
+- [ ] Grid and simple tables.
+- [ ] The directive and role registry with the standard set.
+- [ ] Transforms: resolving targets and references, footnote numbering,
+      substitutions, anonymous references; conformance after transforms.
+
+### 8e: The lsdocs plugin
+- [ ] `parser-rst`: converts the RST tree to the shared document shape
+      (sections, admonitions, footnotes, math, figures, `:doc:` and
+      `:ref:` as link targets), a sample-site page, docs.
+
+## Phase 9: Toward 1.0
 
 - [ ] Freeze protocol v1 and write the compatibility policy.
 - [ ] Finalize `spec/` so authors in other languages (Go, Lua, ...) can implement
       plugins without bindings.
 - [ ] Plugin authoring guide and docs site, built with lsdocs itself.
-- [ ] First-party reStructuredText parser (`parser-rst`), on top of the
-      Phase 6d contract.
 - [ ] Publish crates, wheels and npm packages.
 
 ---
