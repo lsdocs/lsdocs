@@ -705,7 +705,29 @@ Decided:
       feeds the parser random character soup to check it never panics
       (docutils' table code backs up past a table's start in one case,
       and its line arithmetic then goes negative; we follow it there).
-- [ ] The directive and role registry with the standard set.
+- [x] The standard directives (8d-2a): admonitions, topic, sidebar,
+      rubric, the block quote variants, compound, container,
+      parsed-literal, code, math, line-block, image, figure, raw,
+      include, replace, unicode, class, role, default-role, title, meta,
+      date, contents, sectnum, header, footer, target-notes and the test
+      directive, with docutils' argument and option parsing and its
+      option conversion messages; the `role` directive makes custom roles
+      (per document, where docutils keeps them process-wide). Directives
+      that leave work to a transform (`class`, `contents`, `sectnum`,
+      `target-notes`) produce `pending` elements that print as docutils
+      prints them. 69 conformance cases, all matching; the fuzzer has
+      directive fragments, and 12,500 documents match.
+- Decided: an unknown directive is reported the docutils way by default;
+  a parser setting will keep a generic node instead (8d-2b, used by the
+  lsdocs plugin).
+- Deviations, matched in the conformance harness by docutils settings:
+  no syntax highlighting (`syntax_highlight = none`; highlighting is
+  `transform-highlight`'s job in lsdocs) and no file access
+  (`file_insertion_enabled = false`, so `include` and `raw :file:` are
+  disabled) unless the caller allows it later. `date` uses UTC.
+- [ ] 8d-2b: the table directives (`table`, `csv-table`, `list-table`),
+      the public directive and role registry, and the setting for
+      unknown directives.
 - [ ] Transforms: resolving targets and references, footnote numbering,
       substitutions, anonymous references; conformance after transforms.
 
