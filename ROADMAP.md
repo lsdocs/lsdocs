@@ -725,9 +725,18 @@ Decided:
   `transform-highlight`'s job in lsdocs) and no file access
   (`file_insertion_enabled = false`, so `include` and `raw :file:` are
   disabled) unless the caller allows it later. `date` uses UTC.
-- [ ] 8d-2b: the table directives (`table`, `csv-table`, `list-table`),
-      the public directive and role registry, and the setting for
-      unknown directives.
+- [x] 8d-2b: the table directives (`table`, `csv-table` with a port of
+      CPython's `csv` reader and its error messages, `list-table`), the
+      public extension API (`Directive` and `Role` traits with
+      `DirectiveSpec`, `DirectiveContext` for nested and inline parsing,
+      registered with `Parser::directive` and `Parser::role`, taking
+      precedence over standard ones; custom roles from the `role`
+      directive can be based on registered roles), and
+      `Parser::keep_unknown_directives`, which turns an unknown directive
+      into a `directive` element (name and argument attributes, options
+      as a field list, content as a literal block) instead of docutils'
+      messages. 71 conformance cases, all matching; 10,000 more fuzzed
+      documents with table directives match.
 - [ ] Transforms: resolving targets and references, footnote numbering,
       substitutions, anonymous references; conformance after transforms.
 
