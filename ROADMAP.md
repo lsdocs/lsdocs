@@ -835,8 +835,9 @@ Decided:
   absolute path), which `parser-rst` reads included files from.
   `lsdocs-rst` gained `Parser::doctitle`, `Parser::parse_with_messages`
   and `make_id` for the plugin.
-- Follow-up: `transform-links` backlinks do not count `:ref:` links,
-  since labels are resolved only in its apply pass.
+- Fixed: `transform-links` backlinks count label links (`:ref:`) too:
+  the collect pass records the labels a page links to, and a page links
+  to the document that defines the label first, as resolution picks.
 
 ## Phase 9: Toward 1.0
 
