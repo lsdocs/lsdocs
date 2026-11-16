@@ -841,11 +841,32 @@ Decided:
 
 ## Phase 9: Toward 1.0
 
-- [ ] Freeze protocol v1 and write the compatibility policy.
-- [ ] Finalize `spec/` so authors in other languages (Go, Lua, ...) can implement
-      plugins without bindings.
-- [ ] Plugin authoring guide and docs site, built with lsdocs itself.
-- [ ] Publish crates, wheels and npm packages.
+- [x] Protocol version `1.0-rc.0` (a release candidate, not yet frozen as
+      1.0) and the compatibility policy ("Versions" in `spec/wire.md`):
+      release versions are compatible within a major version, release
+      candidates only with themselves; within a major version changes are
+      additive (new optional fields, new opt-in methods), while removing or
+      changing fields and adding node kinds need a new major version.
+      `protocol_version` is now a string on the wire, and
+      `lsdocs_protocol::compatible` checks it in the handshake.
+- [x] `spec/wire.md` finalized for other languages: how plugins are run
+      (commands, runtimes, working directory, stderr, timeouts), a method
+      reference, capabilities, the build lifecycle, diagnostics and an
+      example session. `examples/plugins/txt-parser` proves it: a parser
+      in standard-library Python with its own MessagePack codec and no
+      SDK, which an end-to-end test builds a site with.
+- [x] Docs site in `docs/`, built with lsdocs (`nur docs`): getting
+      started, configuration, writing pages (Markdown and a
+      reStructuredText page in reStructuredText), the built-in plugins and
+      their options, the authoring guide (concepts, Rust, Python,
+      JavaScript, other languages) and references (document tree,
+      protocol). A test builds it and fails on any warning, such as a
+      broken link.
+- Decision: `parser-rst` types field values (`true`, `false`, numbers) as
+  YAML front matter does, so `:nav_order: 2` works.
+- [ ] Freeze protocol 1.0 (after the release candidate has been used).
+- [ ] Publish crates, wheels and npm packages. Deferred: not ready to
+      publish; CI is still low priority.
 
 ---
 

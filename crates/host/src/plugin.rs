@@ -241,11 +241,11 @@ impl PluginClient {
                 .await
                 .map_err(|_| HostError::handshake(&name, "did not answer `initialize` in time"))?
                 .map_err(|e| HostError::handshake(&name, e.to_string()))?;
-                if result.protocol_version != PROTOCOL_VERSION {
+                if !lsdocs_protocol::compatible(&result.protocol_version, PROTOCOL_VERSION) {
                     return Err(HostError::ProtocolMismatch {
                         plugin: name,
                         theirs: result.protocol_version,
-                        ours: PROTOCOL_VERSION,
+                        ours: PROTOCOL_VERSION.to_owned(),
                     });
                 }
                 peer.notify::<notification::Initialized>(&())

@@ -92,9 +92,9 @@ pub enum HostError {
         /// Plugin name from the config.
         plugin: String,
         /// The plugin's version.
-        theirs: u32,
+        theirs: String,
         /// The host's version.
-        ours: u32,
+        ours: String,
     },
     /// A plugin request failed.
     Plugin {
@@ -426,7 +426,7 @@ impl Session {
 /// The `initialize` params for a site with these source files.
 fn initialize_params(config: &Config, root: &Path, files: Vec<String>) -> InitializeParams {
     InitializeParams {
-        protocol_version: PROTOCOL_VERSION,
+        protocol_version: PROTOCOL_VERSION.into(),
         host: ProgramInfo {
             name: "lsdocs".into(),
             version: env!("CARGO_PKG_VERSION").into(),
