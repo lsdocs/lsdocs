@@ -410,6 +410,16 @@ Things left open along the way, by area. The phases above may pick them up.
 - [ ] Node.js binding: context events (logs, progress, diagnostics) reach
       the host when the handler finishes, not as they happen.
 
+### `lsdocs-rst` bindings
+Their known limitations are listed in each package's README
+(`bindings/rst/python/README.md`, `bindings/rst/node/README.md`); keep
+those lists current. To fix:
+- [ ] Python: exceptions from extensions are collected per `Parser`, so
+      two threads parsing with one `Parser` at once can get each other's
+      exception. Collect them per `parse()` call.
+- [ ] Both: extensions can't be async (Node.js) or run on the calling
+      thread's context (Python directives run on a worker thread).
+
 ### Plugin SDK bindings
 - [ ] `TypedDict`s (Python) and `.d.ts` types (Node.js) generated from
       `schema/` instead of written by hand, and type-checked against the
