@@ -482,8 +482,29 @@ Decisions (Python):
   roles, since unprefixed directives (`class`) clash with docutils'.
 - The docs site documents the Python plugin SDK and `lsdocs-rst` (under
   `api/`), part of this phase's exit.
-- [ ] **TypeScript:** a Rust TypeScript parser (e.g. oxc) for `.ts` and
-      `.d.ts` files, with TSDoc; types as written, without the type checker.
+- [x] **TypeScript:** a Rust TypeScript parser (oxc) for `.ts` and
+      `.d.ts` files, with TSDoc; types as written, without the type checker
+      (`apidoc-typescript`).
+- [ ] TypeScript: re-exports (`export * from`, `export { x } from`) and
+      `export =`; JSDoc type annotations in plain JavaScript
+      (`@param {T}` types are kept as documented, not as signatures).
+
+Decisions (TypeScript):
+- **oxc, pinned exactly** (`=0.158.0`): 0.158 needs Rust 1.97, the new
+  MSRV; oxc breaks its API in every minor release.
+- The domain is Sphinx's `js`, with TypeScript's kinds added
+  (`js:interface`, `js:type`, `js:enum`, `js:namespace`). Doc comments
+  are TSDoc tags over Markdown; `{@link X}` (and `| text`) becomes a
+  `js:obj` reference, so it resolves like any other.
+- Modules are files, named after them (`index` after its directory) or
+  as the `paths` entry says (`{ path, module }`, e.g. an npm package
+  name); namespaces get pages as modules do. What a module exports is
+  public (in a file with no exports, everything); `export { a as b }`
+  documents `a` as `b`. Signatures are written from the source's parts
+  (`function f<T>(a: T = 1): R`), long type aliases keeping their lines.
+- The docs site documents `@lsdocs/plugin` and `@lsdocs/rst` from their
+  `.d.ts`, under `api/typescript` (Python's moved to `api/python`, with
+  a hand-written `api/` index).
 - [ ] **C/C++:** libclang (accurate, needs LLVM installed) or tree-sitter
       (no dependency, less exact). Decide early; Doxygen comments either
       way.

@@ -26,6 +26,7 @@ lsdocs-transform-highlight.workspace = true
 lsdocs-transform-links.workspace = true
 lsdocs-sphinx-addons.workspace = true
 lsdocs-apidoc-python.workspace = true
+lsdocs-apidoc-typescript.workspace = true
 lsdocs-transform-nav.workspace = true
 lsdocs-transform-toc.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "signal", "sync", "time", "fs"] }

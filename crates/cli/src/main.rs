@@ -90,6 +90,7 @@ enum Commands {
 fn builtins() -> Builtins {
     Builtins::new()
         .with("apidoc-python", lsdocs_apidoc_python::plugin)
+        .with("apidoc-typescript", lsdocs_apidoc_typescript::plugin)
         .with("parser-markdown", lsdocs_parser_markdown::plugin)
         .with("parser-rst", lsdocs_parser_rst::plugin)
         .with("sphinx-addons", lsdocs_sphinx_addons::plugin)
