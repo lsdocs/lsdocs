@@ -64,10 +64,12 @@ fn sample_site_output() {
         [
             "guide/configuration.html",
             "guide/getting-started.html",
+            "guide/myst.html",
             "img/logo.svg",
             "index.html",
             "reference/cli.html",
             "reference/rst.html",
+            "reference/sphinx.html",
             "sitemap.xml",
         ]
     );

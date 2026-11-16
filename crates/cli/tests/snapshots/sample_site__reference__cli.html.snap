@@ -95,11 +95,13 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <ul>
 <li><a href="../guide/getting-started.html">Getting started</a></li>
 <li><a href="../guide/configuration.html">Configuration</a></li>
+<li><a href="../guide/myst.html">Directives in Markdown</a></li>
 </ul></li>
 <li><span>Reference</span>
 <ul>
 <li><a href="cli.html" aria-current="page">CLI reference</a></li>
 <li><a href="rst.html">reStructuredText</a></li>
+<li><a href="sphinx.html">Sphinx add-ons</a></li>
 </ul></li>
 </ul>
 </nav>
@@ -143,11 +145,13 @@ line two after a hard break.</p>
 <ul>
 <li><p><a href="../index.html">Welcome</a></p>
 </li>
+<li><p><a href="sphinx.html">Sphinx add-ons</a></p>
+</li>
 </ul>
 </div>
 
 <nav class="pager" aria-label="Pages">
-<a class="prev" href="../guide/configuration.html">&larr; Configuration</a>
+<a class="prev" href="../guide/myst.html">&larr; Directives in Markdown</a>
 <a class="next" href="rst.html">reStructuredText &rarr;</a>
 </nav>
 </main>

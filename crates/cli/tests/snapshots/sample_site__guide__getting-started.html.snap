@@ -95,11 +95,13 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <ul>
 <li><a href="getting-started.html" aria-current="page">Getting started</a></li>
 <li><a href="configuration.html">Configuration</a></li>
+<li><a href="myst.html">Directives in Markdown</a></li>
 </ul></li>
 <li><span>Reference</span>
 <ul>
 <li><a href="../reference/cli.html">CLI reference</a></li>
 <li><a href="../reference/rst.html">reStructuredText</a></li>
+<li><a href="../reference/sphinx.html">Sphinx add-ons</a></li>
 </ul></li>
 </ul>
 </nav>

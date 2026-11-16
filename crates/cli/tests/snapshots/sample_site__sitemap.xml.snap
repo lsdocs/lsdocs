@@ -6,7 +6,9 @@ expression: text
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://example.com/sample/guide/configuration.html</loc></url>
   <url><loc>https://example.com/sample/guide/getting-started.html</loc></url>
+  <url><loc>https://example.com/sample/guide/myst.html</loc></url>
   <url><loc>https://example.com/sample/</loc></url>
   <url><loc>https://example.com/sample/reference/cli.html</loc></url>
   <url><loc>https://example.com/sample/reference/rst.html</loc></url>
+  <url><loc>https://example.com/sample/reference/sphinx.html</loc></url>
 </urlset>

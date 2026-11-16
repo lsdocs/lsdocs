@@ -39,7 +39,7 @@ use lsdocs_config::Config;
 use lsdocs_protocol::doctree::{Document, Value};
 use lsdocs_protocol::{
     Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ProgramInfo, RenderParams,
-    RenderSiteParams, RenderedPage, Severity, SiteInfo, TransformCollectParams,
+    RenderSiteParams, RenderedPage, Severity, SiteInfo, Syntax, TransformCollectParams,
 };
 
 mod cache;
@@ -510,12 +510,21 @@ async fn run_pipeline(
             None => assets.push(source),
         }
     }
+    // Every plugin's directives and roles, for the parsers.
+    let mut syntax = Syntax::default();
+    for plugin in plugins {
+        syntax.merge(&plugin.capabilities.syntax);
+    }
+    let syntax_key = serde_json::to_vec(&syntax).unwrap_or_default();
+    let syntax = Arc::new(syntax);
     let parsed = in_parallel(to_parse, {
         let source_dir = source_dir.clone();
         let cache = cache.clone();
         move |(source, parser)| {
             let path = source_dir.join(&source);
             let cache = cache.clone();
+            let syntax = Arc::clone(&syntax);
+            let syntax_key = syntax_key.clone();
             async move {
                 let text = match std::fs::read_to_string(&path) {
                     Ok(text) => text,
@@ -524,9 +533,13 @@ async fn run_pipeline(
                     }
                     Err(e) => return Err(HostError::io(path, e)),
                 };
-                let key = cache
-                    .as_ref()
-                    .and_then(|c| c.key(&parser, "parse", &[source.as_bytes(), text.as_bytes()]));
+                let key = cache.as_ref().and_then(|c| {
+                    c.key(
+                        &parser,
+                        "parse",
+                        &[source.as_bytes(), text.as_bytes(), &syntax_key],
+                    )
+                });
                 if let (Some(cache), Some(key)) = (&cache, &key)
                     && let Some(result) = cache.get(key)
                 {
@@ -536,6 +549,7 @@ async fn run_pipeline(
                     .parse(ParseParams {
                         source: source.clone(),
                         text: text.clone(),
+                        syntax: Syntax::clone(&syntax),
                     })
                     .await?;
                 if let (Some(cache), Some(key)) = (&cache, &key) {

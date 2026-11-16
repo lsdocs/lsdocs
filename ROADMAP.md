@@ -48,6 +48,7 @@ Phases 0-10 are done (0-9 are recorded in [HISTORY.md](HISTORY.md)):
 | 8 | `lsdocs-rst`, a docutils port checked against docutils (parser, directives, transforms, file access), and `parser-rst`. |
 | 9 | Protocol `1.0-rc.0` and its compatibility policy, the finished spec, a plugin written from the spec alone, and the docs site. |
 | 10 | `lsdocs-rst` from Python and Node.js: docutils' settings, a serde form of the tree and the XML writer, and the `lsdocs-rst` / `@lsdocs/rst` packages (below). |
+| 11 (underway) | Syntax extensions in the protocol and both parsers, and the `sphinx-addons` plugin: Sphinx's directives and roles in reStructuredText and Markdown. |
 
 Not done from those phases: packaging and publishing (5c, 9), freezing the
 protocol as 1.0 (9), and the items in the [TODO list](#todo-list).
@@ -66,7 +67,7 @@ lsdocs/
     parser-markdown/  parser-rst/
     transform-toc/  transform-links/  transform-nav/  transform-highlight/
     render-html/    themes: default; zensical              (planned, Phase 13)
-    sphinx-addons/  Sphinx's additions to docutils         (planned, Phase 11)
+    sphinx-addons/  Sphinx's directives and roles          (planned, Phase 11)
     apidoc-python/  apidoc-typescript/  apidoc-cpp/  apidoc-rust/
                                                             (planned, Phase 12)
   bindings/
@@ -212,65 +213,122 @@ options.
 
 ## Phase 11: Sphinx add-ons
 
-**Goal:** a `sphinx-addons` plugin implementing what Sphinx adds on top of
-docutils, so Sphinx projects build with lsdocs with few changes. Like
-`lsdocs-rst`, checked against Sphinx's own output where possible (its
-doctree after reading, from a dev-only harness like `nur gen rst`).
+**Goal:** a `sphinx-addons` plugin implementing the directives and roles
+Sphinx adds on top of docutils, so Sphinx projects build with lsdocs with
+few changes. It is an lsdocs plugin working on the shared document shape,
+not a port of Sphinx's extensions to `lsdocs-rst`: the same directives and
+roles work in reStructuredText and in Markdown (MyST-style syntax).
+Domains (object descriptions such as `py:function` and their roles) belong
+to the API documentation framework (Phase 12).
 
-### 11a: Architecture
-- [ ] Decide how the add-ons hook in. Directives and roles run while
-      parsing, inside `lsdocs-rst`, so they cannot come over the protocol
-      from another process. Leaning: a Rust crate of directive and role
-      implementations that `parser-rst` registers when the site enables it
-      (option `sphinx = true`), plus a transformer for the cross-document
-      parts (toctrees, numbered references, glossary terms, the index,
-      intersphinx). Move `:ref:` and `:doc:` from `parser-rst` there.
-- [ ] Decide where the settings Sphinx keeps in `conf.py` go (`project`,
-      `version`, `release`, `numfig`, `primary_domain`, `default_role`,
-      `rst_prolog` / `rst_epilog`, `intersphinx_mapping`, ...). Leaning:
-      plugin options in `lsdocs.toml`; reading `conf.py` is out of scope.
+### 11a: Syntax extensions
+- [x] Decide how the add-ons hook in. Directives and roles are syntax,
+      seen while parsing, but their meaning is the plugin's.
+- [x] Protocol: a plugin declares the directives and roles it handles; the
+      host passes them to parsers, which turn that syntax into neutral
+      nodes for the plugin to transform.
+- [x] `parser-rst` registers declared directives and roles with
+      `lsdocs-rst`; `parser-markdown` reads MyST-style directives
+      (```` ```{name} ```` fences with `:option:` lines) and roles
+      (`` {name}`text` ``).
+- [x] The plugin SDK declares syntax (`Plugin::syntax`).
+- [x] The `sphinx-addons` plugin, with its options in `lsdocs.toml`.
+      `:ref:` and `:doc:` move there from `parser-rst`.
+
+Decisions:
+- **Declared syntax.** A plugin lists the directives and roles it handles
+  in a new capability, `syntax` (each directive with its arguments,
+  options and whether its content is markup, text or nothing; each role
+  by name). The host merges every plugin's list (the first plugin in
+  config order wins a name) and sends it in every `parse` request
+  (`ParseParams.syntax`), so it is part of the parse cache key. Not in
+  `initialize`: plugins start in config order, so a parser could start
+  before the plugins it should hear about; and not in a message of its
+  own, so parsers stay stateless. Both fields are optional, so the
+  change is additive within `1.0-rc.0`.
+- **Neutral nodes.** A declared directive becomes a `custom` node of its
+  name: `argument`, `options` (flags `true`, values as text) and text
+  `content` as attributes, markup content parsed into its children, and
+  a markup argument parsed into a first `directive_argument` child. A
+  declared role becomes a `custom` node of kind `role` with `name` and
+  `text`, and the text as a child so plain-text views (titles, ids) are
+  right. Written down in "Syntax extensions" in `spec/wire.md`.
+- **Markdown syntax is MyST's**: fences (backticks or tildes) whose
+  language is `{name}`, options as `:name: value` lines or a `---` YAML
+  block, roles as `{name}` right before inline code. Directive content is
+  parsed as Markdown on its own, with its spans moved to the file. An
+  undeclared `{name}` fence becomes a `custom` node as an unknown
+  reStructuredText directive does; an undeclared role stays text and
+  code.
+- **One transformer.** `sphinx-addons` expands directives in both passes
+  (expansion depends only on the page, the options and included files),
+  collects labels, terms, figure and equation numbers, todos, section
+  trees and toctree entries, and resolves roles, toctrees and todo lists
+  in the apply pass. It lists before the other transformers, which then
+  see links and code blocks. Its results are not cached while
+  `file_access` is on (`literalinclude`), as with `parser-rst`.
+- **Checked against Sphinx's behavior, not its doctrees.** The output is
+  lsdocs' document shape, so the tests check what Sphinx does (titles,
+  numbering, line selection, the same tree from reStructuredText and from
+  Markdown), not doctree equality.
+- Labels: a `ref` target is used as written if a page has that anchor,
+  else as docutils makes ids (`My Label` is `my-label`). `doc` finds a
+  page in any format (`.rst`, `.rest`, `.md`, `.markdown`).
+- Inline semantics without new node kinds: inline roles become core
+  inlines where one fits (`command` strong, `dfn` emphasis, `regexp` code)
+  and otherwise `custom` nodes with `inline: true` (and `html_tag`,
+  `title`), which `render-html` draws as inline elements.
 
 ### 11b: Directives
-- [ ] Code: `code-block` / `sourcecode` (`:linenos:`, `:emphasize-lines:`,
+- [x] Code: `code-block` / `sourcecode` (`:linenos:`, `:emphasize-lines:`,
       `:caption:`, `:name:`, `:dedent:`, `:force:`), `literalinclude`
-      (`:lines:`, `:start-after:`, `:end-before:`, `:pyobject:`, `:diff:`,
-      ...), `highlight`.
-- [ ] Notes: `versionadded`, `versionchanged`, `deprecated`,
+      (`:lines:`, `:start-after:`, `:end-before:`, ...), `highlight`.
+      `:pyobject:` and `:diff:` are reported as unsupported.
+- [x] Notes: `versionadded`, `versionchanged`, `deprecated`,
       `versionremoved`, `seealso`, `todo` / `todolist` (sphinx.ext.todo).
-- [ ] Content: `only` (by builder tags), `centered`, `hlist`, `glossary`,
-      `productionlist`, `rubric` with Sphinx's options, `tabularcolumns`
-      (accepted, ignored), `sectionauthor` / `codeauthor`, `acks`.
-- [ ] Structure: `toctree` (`:maxdepth:`, `:caption:`, `:hidden:`,
-      `:glob:`, `:titlesonly:`, `:numbered:`), feeding `transform-nav`: a
-      site whose pages have toctrees gets its navigation from them instead
-      of from its directories.
-- [ ] `index` directive and role, and a generated index page (needs
-      generated documents, 12a).
-- [ ] Math: `math` with `:label:` and equation numbering, `:eq:`.
+- [x] Content: `only` (by tags), `centered`, `hlist`, `glossary`,
+      `tabularcolumns` (accepted, ignored), `sectionauthor` /
+      `codeauthor`, `acks`.
+- [ ] `rubric` with Sphinx's options (`:heading-level:`); docutils'
+      `rubric` works.
+- [x] `toctree` (`:maxdepth:`, `:caption:`, `:hidden:`, `:glob:`,
+      `:titlesonly:`, `:reversed:`) as a list of links to the pages it
+      names and their sections.
+- [ ] `toctree` feeding `transform-nav`: a site whose pages have toctrees
+      gets its navigation from them instead of from its directories; and
+      `:numbered:` (section numbers, `numref` to sections).
+- [ ] `index` directive and role (they make anchors now), and a generated
+      index page (needs generated documents, 12a).
+- [x] Math: `math` with `:label:` and equation numbering, `:eq:`.
+
+Decisions:
+- Version notes are admonitions titled as Sphinx 7.3+ words them ("Added
+  in version 2.0"), with the explanation as their first paragraph.
+- `literalinclude` takes the language from the file's extension when
+  `:language:` is not given (Sphinx uses `highlight_language`);
+  `transform-highlight` knows languages by extension.
+- `:linenos:`, `:lineno-start:` and `:emphasize-lines:` go into the code
+  block's `info` (`linenos lineno-start=3 emphasize-lines=1,2`); nothing
+  draws them yet (13b).
+- `numfig` numbers figures, tables and code blocks with a caption per
+  page (no section numbers), and prefixes their captions ("Fig. 1 ").
+  Numbered equations get `\tag{n}`, which KaTeX and MathJax draw.
 
 ### 11c: Roles
-- [ ] Cross-references: `ref`, `doc`, `numref` (with `numfig` numbering),
-      `term`, `keyword`, `token`, `option`, `envvar`, `any`, `download`
-      (copies the file).
-- [ ] Inline semantics: `abbr`, `command`, `dfn`, `file`, `guilabel`, `kbd`,
+- [x] Cross-references: `ref`, `doc`, `numref` (with `numfig` numbering),
+      `term`, `eq`, `any`, `download` (a link; the file is copied as any
+      asset is).
+- [x] Inline semantics: `abbr`, `command`, `dfn`, `file`, `guilabel`, `kbd`,
       `mailheader`, `makevar`, `manpage`, `menuselection`, `mimetype`,
-      `newsgroup`, `program`, `regexp`, `samp`. These need inline node kinds
-      or a convention for `custom` inlines (see the TODO on inline
-      semantics).
+      `newsgroup`, `program`, `regexp`, `samp`.
+- [x] `extlinks`-style link shortcuts (roles declared from the plugin's
+      options).
 
-### 11d: Domains and intersphinx
-- [ ] Object descriptions for the standard domains (`py`, `c`, `cpp`, `js`,
-      `rst`, `std`): `.. py:function::` and the like, with their signatures
-      parsed, and the matching roles (`:py:func:`, `:cpp:class:`, ...). The
-      object model is shared with the API documentation framework (Phase
-      12), so hand-written and generated API docs link to each other.
-- [ ] Intersphinx: read `objects.inv` inventories (the labels and objects of
-      other sites, Sphinx or lsdocs) and resolve references to them; write
-      one for the lsdocs site.
-- [ ] `extlinks`-style link shortcuts.
-
-**Exit:** a mid-sized Sphinx project (to be picked) builds without errors,
-and its pages match Sphinx's doctrees for the supported features.
+**Exit:** every directive and role above works from reStructuredText and
+from Markdown in a test site, and a mid-sized Sphinx project (to be
+picked) builds without errors. The first half is met (the plugin's tests
+build the same pages from both formats; the sample site uses both); the
+second is open, with the unchecked items above.
 
 ## Phase 12: API documentation framework
 
@@ -299,8 +357,15 @@ language is its own package that depends on it and only extracts.
       reStructuredText (with `lsdocs-rst`), Google and NumPy docstring
       sections, Doxygen / Javadoc / TSDoc tags, rustdoc's intra-doc links.
 - [ ] Cross-references: qualified names to anchors, across languages and
-      pages; the same object model as the Sphinx domains (11d); inventory
-      export and import (intersphinx).
+      pages; inventory export and import (see the `ext-ref` TODO).
+- [ ] Domains, as Sphinx has them: object description directives
+      (`.. py:function::` and the like, with their signatures parsed) and
+      their roles (`:py:func:`, `:cpp:class:`, ...) for the standard
+      domains (`py`, `c`, `cpp`, `js`, `rst`, and `std`'s `option`,
+      `program`, `envvar`, `productionlist` / `token`), declared as
+      syntax extensions (11a) so they work in reStructuredText and
+      Markdown. The object model is the framework's, so hand-written and
+      generated API docs link to each other.
 - [ ] Output: pages (one per module, or per item for large APIs, as the
       user chooses), and directives / Markdown blocks that place a single
       item in a hand-written page (`autoclass`-style).
@@ -473,21 +538,43 @@ those lists current. To fix:
       table deserialized into `lsdocs_rst::Settings`).
 - [ ] Inline semantics are lost: `subscript`, `superscript`,
       `abbreviation`, `acronym` and `inline` with classes become their
-      text; `title_reference` becomes emphasis. Needs inline node kinds or
-      an inline `custom` convention (renderers draw `custom` as a block
-      `div`).
+      text; `title_reference` becomes emphasis. The inline `custom`
+      convention `sphinx-addons` uses (`inline: true`, `html_tag`) would
+      do.
 - [ ] Tables lose cell spans (`morecols`, `morerows`) and stub columns; the
       doctree's tables have neither.
 - [ ] Images lose `width`, `height`, `scale` and `align`; figures lose
       `figwidth` and `align`.
 - [ ] Topic and sidebar titles become bold paragraphs; nested line blocks
       are indented with no-break spaces.
-- [ ] `:doc:` links to `<path>.rst` only, so it cannot point at a Markdown
-      page.
 - [ ] Option values of unknown directives are kept as strings.
 - [ ] Diagnostics about included files have no span.
 - [ ] Results are not cached while `file_access` is on (12a dependencies
       fix this).
+
+### `sphinx-addons` and syntax extensions
+- [ ] The Python and Node.js plugin SDKs cannot declare syntax yet
+      (`Plugin::syntax` is Rust only).
+- [ ] Markdown: MyST's colon fences (`:::{name}`) are not read
+      (pulldown-cmark has no hook for them), nor MyST's `(label)=`
+      targets. Directive content is parsed on its own, so it cannot use
+      the page's link reference definitions or footnotes.
+- [ ] Documents are found by extension (`.rst`, `.rest`, `.md`,
+      `.markdown`) for `doc` and `toctree`, since a transformer does not
+      know which files parsers took.
+- [ ] Not supported: `literalinclude`'s `:pyobject:` and `:diff:`, encodings
+      other than UTF-8; compound keys in `kbd` (`Ctrl+C` is one key);
+      several terms for one glossary entry (in reStructuredText the
+      content is a definition list); `conf.py` settings that change
+      parsing (`default_role`, `rst_prolog` / `rst_epilog`, the
+      `|version|` and `|release|` substitutions).
+
+### Plugins to write
+- [ ] `ext-ref`: references to other sites' objects and labels, read from
+      inventories (Sphinx's `objects.inv` as one format among others, not
+      the only one), and an inventory written for the lsdocs site, so
+      other sites can link to it. Replaces intersphinx; not specific to
+      Sphinx.
 
 ### Rendering
 - [ ] `render-html` draws `custom` nodes as an empty `div` with the kind as
@@ -505,7 +592,7 @@ those lists current. To fix:
 |---|---|---|
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | before 1.0 |
 | Site-wide data shared once (e.g. navigation) instead of per page | open | when nav cost matters |
-| How Sphinx add-ons hook into parsing | a directive crate registered by `parser-rst`, plus a transformer | 11a |
+| How Sphinx add-ons hook into parsing | declared syntax: parsers make neutral nodes, a transformer gives them meaning | 11a |
 | Rust API extraction: rustdoc JSON or `syn` | rustdoc JSON | 12c |
 | C/C++ extraction: libclang or tree-sitter | open | 12c |
 | Theme settings: `render-html` options or a `[theme]` table | open | 13a |
