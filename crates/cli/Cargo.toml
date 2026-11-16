@@ -25,13 +25,20 @@ lsdocs-render-html.workspace = true
 lsdocs-transform-highlight.workspace = true
 lsdocs-transform-links.workspace = true
 lsdocs-sphinx-addons.workspace = true
-lsdocs-apidoc-python.workspace = true
-lsdocs-apidoc-typescript.workspace = true
+lsdocs-apidoc-python = { workspace = true, optional = true }
+lsdocs-apidoc-typescript = { workspace = true, optional = true }
 lsdocs-transform-nav.workspace = true
 lsdocs-transform-toc.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "signal", "sync", "time", "fs"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+
+[features]
+# The API documentation builtins. Each raises the MSRV to its plugin's
+# (1.97); without them lsdocs builds on the workspace's.
+default = ["apidoc-python", "apidoc-typescript"]
+apidoc-python = ["dep:lsdocs-apidoc-python"]
+apidoc-typescript = ["dep:lsdocs-apidoc-typescript"]
 
 [dev-dependencies]
 insta.workspace = true

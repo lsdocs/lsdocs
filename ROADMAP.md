@@ -453,22 +453,30 @@ Decisions:
 ### 12c: Language packages
 Each is a crate and plugin of its own (`plugins/apidoc-<language>`),
 depending on the framework. Static extraction first: no project code runs.
-- [ ] **Rust:** from rustdoc's JSON output (needs a nightly toolchain, and
-      the format is unstable: pin and check its version), or from `syn`
-      without type information. Decide early.
+- [ ] **Rust:** from rustdoc's JSON output (the user's choice): needs a
+      nightly toolchain to run, and the format is unstable, so the plugin
+      pins `rustdoc-types` and checks `format_version`.
 - [x] **Python:** a Rust Python parser (ruff's) for modules and stub
       files, with type annotations and docstrings (`apidoc-python`).
 - [ ] Python: re-exports (`from ._native import Context` in a package's
       `__init__` documents nothing; Sphinx's autodoc imports and would
-      show it), and optional runtime inspection for extension modules.
+      show it).
+- [ ] Python: **native extension modules are not supported.** ruff's
+      parser reads source; a compiled module (`.so`, `.pyd`) has none, so
+      only a `.pyi` stub beside it is documented, with the stub's
+      docstrings. Its own docstrings (`__doc__`, `__text_signature__`)
+      need a Python runtime importing it: an optional runtime mode (or a
+      plugin in Python) if stubs prove not enough.
 
 Decisions (Python):
 - **ruff's parser, and MSRV 1.97.** `ruff_python_parser` /
   `ruff_python_ast` / `ruff_text_size` are on crates.io as Astral's
   internal crates: current with Python's syntax, but every release needs
-  Rust 1.95+, so the workspace MSRV went from 1.89 to 1.97 (the user's
-  call), and they are pinned exactly (`=0.0.22`) since their API may
-  change in any release.
+  Rust 1.95+, so the plugin's MSRV is 1.97 (the user's call), and they
+  are pinned exactly (`=0.0.22`) since their API may change in any
+  release. The MSRV is the plugin's alone (at first the workspace's went
+  up; then MSRVs became per crate): the workspace stays at 1.89, and
+  lsdocs' `apidoc-python` feature (default) needs 1.97.
 - Statically, like the rest: packages from directories (`__init__`,
   modules, subpackages; `_`-names skipped), a `.pyi` stub instead of the
   module beside it, the first `@overload`. A class's signature is its
@@ -490,8 +498,8 @@ Decisions (Python):
       (`@param {T}` types are kept as documented, not as signatures).
 
 Decisions (TypeScript):
-- **oxc, pinned exactly** (`=0.158.0`): 0.158 needs Rust 1.97, the new
-  MSRV; oxc breaks its API in every minor release.
+- **oxc, pinned exactly** (`=0.158.0`): 0.158 needs Rust 1.97, the
+  plugin's MSRV; oxc breaks its API in every minor release.
 - The domain is Sphinx's `js`, with TypeScript's kinds added
   (`js:interface`, `js:type`, `js:enum`, `js:namespace`). Doc comments
   are TSDoc tags over Markdown; `{@link X}` (and `| text`) becomes a
@@ -505,9 +513,11 @@ Decisions (TypeScript):
 - The docs site documents `@lsdocs/plugin` and `@lsdocs/rst` from their
   `.d.ts`, under `api/typescript` (Python's moved to `api/python`, with
   a hand-written `api/` index).
-- [ ] **C/C++:** libclang (accurate, needs LLVM installed) or tree-sitter
-      (no dependency, less exact). Decide early; Doxygen comments either
-      way.
+- [ ] **C/C++:** libclang (the user's choice: nothing else parses the C
+      family well), loaded at run time (`clang-sys`'s `runtime` feature),
+      so building lsdocs needs no LLVM; using the plugin needs libclang
+      installed, which its README documents on Windows (winget), macOS
+      (Homebrew) and Linux (apt, dnf, pacman). Doxygen comments.
 
 **Exit:** the lsdocs docs site documents `lsdocs-plugin-sdk` (Rust), the
 Python and Node.js bindings, and a C/C++ sample, with links between the
@@ -710,8 +720,6 @@ those lists current. To fix:
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | before 1.0 |
 | Site-wide data shared once (e.g. navigation) instead of per page | open | when nav cost matters |
 | How Sphinx add-ons hook into parsing | declared syntax: parsers make neutral nodes, a transformer gives them meaning | 11a |
-| Rust API extraction: rustdoc JSON or `syn` | rustdoc JSON | 12c |
-| C/C++ extraction: libclang or tree-sitter | open | 12c |
 | Theme settings: `render-html` options or a `[theme]` table | open | 13a |
 | zensical templates: port to minijinja or render as they are | research first | 13c |
 

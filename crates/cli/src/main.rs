@@ -88,9 +88,12 @@ enum Commands {
 
 /// The first-party plugins, available as `builtin = "<name>"`.
 fn builtins() -> Builtins {
-    Builtins::new()
-        .with("apidoc-python", lsdocs_apidoc_python::plugin)
-        .with("apidoc-typescript", lsdocs_apidoc_typescript::plugin)
+    let builtins = Builtins::new();
+    #[cfg(feature = "apidoc-python")]
+    let builtins = builtins.with("apidoc-python", lsdocs_apidoc_python::plugin);
+    #[cfg(feature = "apidoc-typescript")]
+    let builtins = builtins.with("apidoc-typescript", lsdocs_apidoc_typescript::plugin);
+    builtins
         .with("parser-markdown", lsdocs_parser_markdown::plugin)
         .with("parser-rst", lsdocs_parser_rst::plugin)
         .with("sphinx-addons", lsdocs_sphinx_addons::plugin)
