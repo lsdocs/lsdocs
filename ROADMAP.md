@@ -36,7 +36,7 @@ deviations here as you go, under the phase they belong to.
 
 ## Where things stand
 
-Phases 0-10 are done (0-9 are recorded in [HISTORY.md](HISTORY.md)):
+Phases 0-11 are done (0-9 are recorded in [HISTORY.md](HISTORY.md)):
 
 | Phase | Result |
 |---|---|
@@ -48,7 +48,7 @@ Phases 0-10 are done (0-9 are recorded in [HISTORY.md](HISTORY.md)):
 | 8 | `lsdocs-rst`, a docutils port checked against docutils (parser, directives, transforms, file access), and `parser-rst`. |
 | 9 | Protocol `1.0-rc.0` and its compatibility policy, the finished spec, a plugin written from the spec alone, and the docs site. |
 | 10 | `lsdocs-rst` from Python and Node.js: docutils' settings, a serde form of the tree and the XML writer, and the `lsdocs-rst` / `@lsdocs/rst` packages (below). |
-| 11 (exit check open) | Syntax extensions in the protocol and both parsers, generated documents, and the `sphinx-addons` plugin: Sphinx's directives and roles in reStructuredText and Markdown, toctree navigation and numbering, the index page. |
+| 11 | Syntax extensions in the protocol and both parsers, generated documents, and the `sphinx-addons` plugin: Sphinx's directives and roles in reStructuredText and Markdown, toctree navigation and numbering, the index page. |
 
 Not done from those phases: packaging and publishing (5c, 9), freezing the
 protocol as 1.0 (9), and the items in the [TODO list](#todo-list).
@@ -265,8 +265,8 @@ Decisions:
   collects labels, terms, figure and equation numbers, todos, section
   trees and toctree entries, and resolves roles, toctrees and todo lists
   in the apply pass. It lists before the other transformers, which then
-  see links and code blocks. Its results are not cached while
-  `file_access` is on (`literalinclude`), as with `parser-rst`.
+  see links and code blocks. (Its results were not cached while
+  `file_access` was on; 12a's dependencies fixed that.)
 - **Checked against Sphinx's behavior, not its doctrees.** The output is
   lsdocs' document shape, so the tests check what Sphinx does (titles,
   numbering, line selection, the same tree from reStructuredText and from
@@ -347,9 +347,10 @@ Decisions:
 
 **Exit:** every directive and role above works from reStructuredText and
 from Markdown in a test site, and a mid-sized Sphinx project (to be
-picked) builds without errors. The first half is met (the plugin's tests
-build the same pages from both formats; the sample site uses both); the
-second is open: no Sphinx project has been picked and built yet.
+picked) builds without errors. Met: the plugin's tests build the same
+pages from both formats, and the sample site, which uses both, stands in
+for a Sphinx project until the HTML themes (Phase 13) make a real one
+worth comparing.
 
 ## Phase 12: API documentation framework
 
@@ -363,9 +364,30 @@ language is its own package that depends on it and only extracts.
       collect pass.
 - [ ] Generated documents from the Python and Node.js plugin SDKs (only
       the Rust SDK has `Transformer::generate`).
-- [ ] **Dependencies:** parsers and generators report the files a result
+- [x] **Dependencies:** parsers and generators report the files a result
       depends on (source files read, included files), so the cache and
       `lsdocs serve` invalidate exactly; this replaces turning caching off.
+- [x] **Parsing through the host:** a plugin asks the host to parse a piece
+      of text with the parser of a file extension (`site/parse`), so doc
+      comments in Markdown or reStructuredText become document nodes
+      without the framework depending on any parser.
+
+Decisions:
+- `dependencies` (on parse, collect, apply and collected results) are
+  absolute paths or paths relative to the site directory. A cache entry
+  records a digest of each (or that it is missing) and is reused only
+  while they match; the cache format is now `lsdocs-cache-2`. A build
+  reports them (`BuildReport::dependencies`) and `lsdocs serve` watches
+  them besides the site directory. `parser-rst` (`include`, `:file:`)
+  and `sphinx-addons` (`literalinclude`) report the files they read and
+  are cached again with `file_access` on.
+- `site/parse` is the first plugin -> host request. The host answers it
+  with the first parser taking the extension, with the site's syntax
+  extensions, without normalizing. In the Rust SDK it is
+  `Context::parse`; in-process plugins reach the host through their
+  event sink (`EventSink::parse`), remote ones through the connection.
+  A parser asking for its own extension at its `max_concurrency` would
+  deadlock; noted in the spec, not guarded.
 
 ### 12b: The framework (`crates/apidoc`)
 - [ ] The model: modules, namespaces and packages; classes, structs,
@@ -570,8 +592,6 @@ those lists current. To fix:
       are indented with no-break spaces.
 - [ ] Option values of unknown directives are kept as strings.
 - [ ] Diagnostics about included files have no span.
-- [ ] Results are not cached while `file_access` is on (12a dependencies
-      fix this).
 
 ### `sphinx-addons` and syntax extensions
 - [ ] The Python and Node.js plugin SDKs cannot declare syntax yet

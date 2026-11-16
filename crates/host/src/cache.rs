@@ -13,6 +13,10 @@
 //! `.lsdocs-cache/` at the site root. After a build, entries it did not use
 //! are deleted, so the cache holds what the last build needed.
 //!
+//! A result may list files it depends on (`dependencies`, such as included
+//! files); its entry records a digest of each (or that it was missing), and
+//! is only reused while they are unchanged.
+//!
 //! Cached results replay the diagnostics they carry; logs, progress and
 //! diagnostics a plugin sent as notifications are not replayed.
 
@@ -29,7 +33,7 @@ use serde::de::DeserializeOwned;
 use crate::plugin::PluginClient;
 
 /// Bumped when the layout of cache entries changes.
-const FORMAT: &str = "lsdocs-cache-1";
+const FORMAT: &str = "lsdocs-cache-2";
 
 /// Where the cache lives, relative to the site root.
 pub const DIR: &str = ".lsdocs-cache";
@@ -38,6 +42,8 @@ pub const DIR: &str = ".lsdocs-cache";
 /// session's later builds do not read them back from disk.
 pub(crate) struct Cache {
     dir: PathBuf,
+    /// The site directory, which relative dependency paths start from.
+    root: PathBuf,
     /// The site settings part of every key.
     site: Vec<u8>,
     /// Encoded entries, by key.
@@ -56,6 +62,7 @@ impl Cache {
         };
         Self {
             dir,
+            root: site.root.clone().map(PathBuf::from).unwrap_or_default(),
             site: serde_json::to_vec(&site).unwrap_or_default(),
             memory: Mutex::default(),
             used: Mutex::default(),
@@ -107,7 +114,8 @@ impl Cache {
         self.hits.store(0, Ordering::Relaxed);
     }
 
-    /// The entry for `key`, if there is a readable one.
+    /// The entry for `key`, if there is a readable one whose dependencies
+    /// are unchanged.
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Option<T> {
         let remembered = self
             .memory
@@ -126,17 +134,32 @@ impl Cache {
                 bytes
             }
         };
-        let value = msgpack::decode(&bytes).ok()?;
+        let entry: Entry<T> = msgpack::decode(&bytes).ok()?;
+        let fresh = entry
+            .files
+            .iter()
+            .all(|(path, digest)| file_digest(&self.root, path) == *digest);
+        if !fresh {
+            return None;
+        }
         self.mark(key);
         self.hits.fetch_add(1, Ordering::Relaxed);
-        Some(value)
+        Some(entry.value)
     }
 
-    /// Stores `value` under `key`. Failing to write only costs a cache miss
-    /// next time, so errors are logged, not returned.
-    pub fn put<T: Serialize>(&self, key: &str, value: &T) {
+    /// Stores `value` under `key`, with the state of the files it depends
+    /// on. Failing to write only costs a cache miss next time, so errors
+    /// are logged, not returned.
+    pub fn put<T: Serialize>(&self, key: &str, value: &T, dependencies: &[String]) {
         self.mark(key);
-        let Ok(bytes) = msgpack::encode(value) else {
+        let entry = EntryRef {
+            files: dependencies
+                .iter()
+                .map(|path| (path.clone(), file_digest(&self.root, path)))
+                .collect(),
+            value,
+        };
+        let Ok(bytes) = msgpack::encode(&entry) else {
             return;
         };
         let bytes = Arc::new(bytes);
@@ -209,10 +232,36 @@ pub(crate) fn get<T: DeserializeOwned>(
 }
 
 /// Caches `value` under `key`, if there is a cache and a key.
-pub(crate) fn put<T: Serialize>(cache: &Option<Arc<Cache>>, key: &Option<String>, value: &T) {
+pub(crate) fn put<T: Serialize>(
+    cache: &Option<Arc<Cache>>,
+    key: &Option<String>,
+    value: &T,
+    dependencies: &[String],
+) {
     if let (Some(cache), Some(key)) = (cache, key) {
-        cache.put(key, value);
+        cache.put(key, value, dependencies);
     }
+}
+
+/// A cache entry: the result, and the digest of each file it depends on
+/// (`None` for a missing file).
+#[derive(serde::Deserialize)]
+struct Entry<T> {
+    files: Vec<(String, Option<String>)>,
+    value: T,
+}
+
+#[derive(Serialize)]
+struct EntryRef<'a, T> {
+    files: Vec<(String, Option<String>)>,
+    value: &'a T,
+}
+
+/// A digest of the file at `path` (relative to `root`, or absolute), or
+/// `None` if it cannot be read.
+fn file_digest(root: &Path, path: &str) -> Option<String> {
+    let bytes = std::fs::read(root.join(path)).ok()?;
+    Some(blake3::hash(&bytes).to_hex().to_string())
 }
 
 /// A digest of `value`, for keys that depend on it.

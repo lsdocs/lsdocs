@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Stdio;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError, Weak};
 use std::time::Duration;
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -13,9 +13,10 @@ use lsdocs_protocol::doctree::Document;
 use lsdocs_protocol::doctree::Value;
 use lsdocs_protocol::{
     Capabilities, Diagnostic, InitializeParams, LogLevel, PROTOCOL_VERSION, ParseParams,
-    ParseResult, RenderParams, RenderResult, RenderSiteParams, RenderSiteResult,
-    TransformApplyParams, TransformApplyResult, TransformCollectParams, TransformCollectResult,
-    TransformCollectedParams, TransformCollectedResult, notification, request,
+    ParseResult, RenderParams, RenderResult, RenderSiteParams, RenderSiteResult, SiteParseParams,
+    Syntax, TransformApplyParams, TransformApplyResult, TransformCollectParams,
+    TransformCollectResult, TransformCollectedParams, TransformCollectedResult, notification,
+    request,
 };
 use lsdocs_rpc::transport::{Transport, pipe};
 use lsdocs_rpc::{Options, Peer, Router};
@@ -75,10 +76,21 @@ impl Builtins {
     }
 }
 
-/// Collects what plugins report outside of results.
+/// Collects what plugins report outside of results, and answers their
+/// requests to the host.
 #[derive(Clone, Default)]
 pub(crate) struct Events {
     diagnostics: Arc<Mutex<Vec<Diagnostic>>>,
+    /// The running plugins that parse, for `site/parse`.
+    parsers: Arc<Mutex<Arc<SiteParsers>>>,
+}
+
+/// The parsers `site/parse` can use, and the syntax they get. Weak, so the
+/// plugins (which hold [`Events`]) don't keep themselves alive.
+#[derive(Default)]
+struct SiteParsers {
+    plugins: Vec<Weak<PluginClient>>,
+    syntax: Syntax,
 }
 
 impl Events {
@@ -103,6 +115,49 @@ impl Events {
         }
     }
 
+    /// Makes `plugins` the ones `site/parse` uses.
+    pub(crate) fn set_plugins(&self, plugins: &[Arc<PluginClient>]) {
+        let mut syntax = Syntax::default();
+        for plugin in plugins {
+            syntax.merge(&plugin.capabilities.syntax);
+        }
+        let parsers = SiteParsers {
+            plugins: plugins
+                .iter()
+                .filter(|p| p.capabilities.parse.is_some())
+                .map(Arc::downgrade)
+                .collect(),
+            syntax,
+        };
+        *self.parsers.lock().unwrap_or_else(PoisonError::into_inner) = Arc::new(parsers);
+    }
+
+    /// Answers `site/parse`: parses with the first parser taking the
+    /// extension.
+    pub(crate) async fn site_parse(&self, params: SiteParseParams) -> Result<ParseResult, String> {
+        let parsers = Arc::clone(&self.parsers.lock().unwrap_or_else(PoisonError::into_inner));
+        let parser = parsers
+            .plugins
+            .iter()
+            .filter_map(Weak::upgrade)
+            .find(|p| {
+                p.capabilities.parse.as_ref().is_some_and(|cap| {
+                    cap.extensions
+                        .iter()
+                        .any(|e| e.eq_ignore_ascii_case(&params.extension))
+                })
+            })
+            .ok_or_else(|| format!("no parser takes `.{}` files", params.extension))?;
+        parser
+            .parse(ParseParams {
+                source: params.source,
+                text: params.text,
+                syntax: parsers.syntax.clone(),
+            })
+            .await
+            .map_err(|e| e.to_string())
+    }
+
     /// Takes the diagnostics reported so far.
     pub(crate) fn take_diagnostics(&self) -> Vec<Diagnostic> {
         std::mem::take(
@@ -124,6 +179,10 @@ impl EventSink for InProcessSink {
     fn send(&self, event: Event) -> BoxFuture<'_, ()> {
         self.events.handle(&self.plugin, event);
         Box::pin(async {})
+    }
+
+    fn parse(&self, params: SiteParseParams) -> BoxFuture<'_, Result<ParseResult, String>> {
+        Box::pin(self.events.site_parse(params))
     }
 }
 
@@ -551,7 +610,17 @@ fn router(plugin: &str, events: &Events) -> Router {
     let (log_name, log_events) = (plugin.to_owned(), events.clone());
     let (progress_name, progress_events) = (plugin.to_owned(), events.clone());
     let (diag_name, diag_events) = (plugin.to_owned(), events.clone());
+    let parse_events = events.clone();
     Router::new()
+        .request::<request::SiteParse, _, _>(move |params, _| {
+            let events = parse_events.clone();
+            async move {
+                events
+                    .site_parse(params)
+                    .await
+                    .map_err(lsdocs_rpc::RpcError::internal)
+            }
+        })
         .notification::<notification::Log, _>(move |p, _| {
             log_events.handle(&log_name, Event::Log(p))
         })

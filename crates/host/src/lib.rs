@@ -38,8 +38,9 @@ use std::sync::Arc;
 use lsdocs_config::Config;
 use lsdocs_protocol::doctree::{Document, Value};
 use lsdocs_protocol::{
-    Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ProgramInfo, RenderParams,
-    RenderSiteParams, RenderedPage, Severity, SiteInfo, Syntax, TransformCollectParams,
+    Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ParseResult, ProgramInfo,
+    RenderParams, RenderSiteParams, RenderedPage, Severity, SiteInfo, Syntax,
+    TransformCollectParams,
 };
 
 mod cache;
@@ -213,6 +214,9 @@ pub struct BuildReport {
     pub changed: Vec<String>,
     /// Problems reported by plugins, in the order they arrived.
     pub diagnostics: Vec<Diagnostic>,
+    /// Files results depend on besides the sources (included files, the
+    /// code of generated API pages), for `lsdocs serve` to watch.
+    pub dependencies: std::collections::BTreeSet<PathBuf>,
     /// Source text of each parsed document, for locating diagnostics.
     sources: HashMap<String, String>,
 }
@@ -332,6 +336,8 @@ pub struct Session {
     cache: Option<Arc<cache::Cache>>,
     /// Digests of the files the last build left in the output directory.
     outputs: HashMap<String, blake3::Hash>,
+    /// The files the last build's results depended on.
+    dependencies: std::collections::BTreeSet<PathBuf>,
 }
 
 impl fmt::Debug for Session {
@@ -367,6 +373,7 @@ impl Session {
             plugins,
             cache,
             outputs: HashMap::new(),
+            dependencies: std::collections::BTreeSet::new(),
         })
     }
 
@@ -409,7 +416,14 @@ impl Session {
         let notified = self.events.take_diagnostics();
         let mut report = report?;
         report.diagnostics.extend(notified);
+        self.dependencies.clone_from(&report.dependencies);
         Ok(report)
+    }
+
+    /// The files the last build's results depended on besides the sources
+    /// (see [`BuildReport::dependencies`]), to watch for changes.
+    pub fn dependencies(&self) -> &std::collections::BTreeSet<PathBuf> {
+        &self.dependencies
     }
 
     /// The configuration the session builds.
@@ -464,6 +478,7 @@ async fn start_plugins(
             }
         }
     }
+    events.set_plugins(&plugins);
     Ok(plugins)
 }
 
@@ -541,7 +556,7 @@ async fn run_pipeline(
                     )
                 });
                 if let (Some(cache), Some(key)) = (&cache, &key)
-                    && let Some(result) = cache.get(key)
+                    && let Some(result) = cache.get::<ParseResult>(key)
                 {
                     return Ok(Parsed::Document(source, text, result));
                 }
@@ -553,7 +568,7 @@ async fn run_pipeline(
                     })
                     .await?;
                 if let (Some(cache), Some(key)) = (&cache, &key) {
-                    cache.put(key, &result);
+                    cache.put(key, &result, &result.dependencies);
                 }
                 Ok(Parsed::Document(source, text, result))
             }
@@ -571,6 +586,7 @@ async fn run_pipeline(
             }),
             Parsed::Document(source, text, result) => {
                 add_diagnostics(&mut report, &source, result.diagnostics);
+                add_dependencies(&mut report, root, &result.dependencies);
                 let mut document = result.document;
                 document.source = source.clone();
                 report.sources.insert(source, text);
@@ -615,7 +631,7 @@ async fn run_pipeline(
                             return Ok((source, result));
                         }
                         let result = plugin.collect(TransformCollectParams { document }).await?;
-                        cache::put(&cache, &key, &result);
+                        cache::put(&cache, &key, &result, &result.dependencies);
                         Ok((source, result))
                     }
                 }
@@ -625,6 +641,7 @@ async fn run_pipeline(
             for result in results {
                 let (source, result) = result?;
                 add_diagnostics(&mut report, &source, result.diagnostics);
+                add_dependencies(&mut report, root, &result.dependencies);
                 data.insert(source, result.data);
             }
             let collected = Value::Object(data);
@@ -633,6 +650,7 @@ async fn run_pipeline(
             }
             let generated = plugin.set_collected(collected).await?;
             report.diagnostics.extend(generated.diagnostics);
+            add_dependencies(&mut report, root, &generated.dependencies);
             // Generated documents join the site, after a check that their
             // paths are free.
             let mut sources: std::collections::BTreeSet<String> =
@@ -683,7 +701,7 @@ async fn run_pipeline(
                         return Ok((i, result));
                     }
                     let result = plugin.apply(document).await?;
-                    cache::put(&cache, &key, &result);
+                    cache::put(&cache, &key, &result, &result.dependencies);
                     Ok((i, result))
                 }
             }
@@ -693,6 +711,7 @@ async fn run_pipeline(
             let (i, result) = result?;
             let source = std::mem::take(&mut documents[i].source);
             add_diagnostics(&mut report, &source, result.diagnostics);
+            add_dependencies(&mut report, root, &result.dependencies);
             documents[i] = result.document;
             documents[i].source = source;
         }
@@ -736,7 +755,7 @@ async fn run_pipeline(
                         return Ok((source, metadata, result));
                     }
                     let result = renderer.render(RenderParams { document, format }).await?;
-                    cache::put(&cache, &key, &result);
+                    cache::put(&cache, &key, &result, &[]);
                     Ok((source, metadata, result))
                 }
             }
@@ -844,6 +863,16 @@ fn write_if_changed(
     }
     write_file(&path, bytes)?;
     Ok(true)
+}
+
+/// Notes the files a result depends on (relative to the site `root`).
+fn add_dependencies(report: &mut BuildReport, root: &Path, dependencies: &[String]) {
+    for dependency in dependencies {
+        let path = root.join(dependency);
+        report
+            .dependencies
+            .insert(std::path::absolute(&path).unwrap_or(path));
+    }
 }
 
 fn add_diagnostics(report: &mut BuildReport, source: &str, diagnostics: Vec<Diagnostic>) {

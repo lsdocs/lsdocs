@@ -330,3 +330,56 @@ fn a_crashing_plugin_fails_the_build_cleanly() {
     assert!(err.contains("plugin `broken`"), "{err}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn included_files_invalidate_cached_results() {
+    let site = temp_dir("deps");
+    let docs = site.join("docs");
+    write(
+        &docs.join("page.rst"),
+        "Page\n====\n\n.. include:: part.txt\n\n.. literalinclude:: code.py\n",
+    );
+    write(&docs.join("part.txt"), "Included *one*.\n");
+    write(&docs.join("code.py"), "x = 1\n");
+    let config_path = site.join("lsdocs.toml");
+    write(
+        &config_path,
+        "[[plugins]]\nname = \"rst\"\nbuiltin = \"parser-rst\"\n\n\
+         [[plugins]]\nname = \"sphinx\"\nbuiltin = \"sphinx-addons\"\n\n\
+         [[plugins]]\nname = \"html\"\nbuiltin = \"render-html\"\n",
+    );
+    let config_arg = config_path.to_string_lossy().into_owned();
+    let build = || {
+        let output = lsdocs(&["build", "--config", config_arg.as_str()]);
+        assert!(output.status.success(), "{}", stderr(&output));
+        let page = std::fs::read_to_string(site.join("site/page.html")).unwrap();
+        (page, stderr(&output))
+    };
+    let (page, _) = build();
+    assert!(
+        page.contains("<em>one</em>") && page.contains("x = 1"),
+        "{page}"
+    );
+    // Unchanged: from the cache.
+    let (_, log) = build();
+    assert!(log.contains("from the cache"), "{log}");
+    // A changed included file is read again, though the page did not change.
+    write(&docs.join("part.txt"), "Included *two*.\n");
+    write(&docs.join("code.py"), "x = 2\n");
+    let (page, _) = build();
+    assert!(
+        page.contains("<em>two</em>") && page.contains("x = 2"),
+        "{page}"
+    );
+    // A missing file that appears counts as a change too.
+    write(
+        &docs.join("page.rst"),
+        "Page\n====\n\n.. include:: later.txt\n",
+    );
+    let output = lsdocs(&["build", "--config", config_arg.as_str()]);
+    assert!(stderr(&output).contains("later.txt"), "{}", stderr(&output));
+    write(&docs.join("later.txt"), "Now *here*.\n");
+    let (page, _) = build();
+    assert!(page.contains("<em>here</em>"), "{page}");
+    let _ = std::fs::remove_dir_all(&site);
+}

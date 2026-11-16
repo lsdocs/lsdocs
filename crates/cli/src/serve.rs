@@ -14,7 +14,7 @@
 //!   get a small script that listens on [`RELOAD_PATH`] (server-sent
 //!   events) and reloads the page after a rebuild changes any output.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -70,7 +70,11 @@ pub async fn serve(
         output_dir.display()
     );
 
-    let mut watched = Snapshot::take(&root, &ignored(&root, session.config()));
+    let mut watched = Snapshot::take(
+        &root,
+        &ignored(&root, session.config()),
+        session.dependencies(),
+    );
     let mut config_stamp = stamp(config_path);
     loop {
         tokio::select! {
@@ -78,13 +82,13 @@ pub async fn serve(
             () = tokio::time::sleep(POLL) => {}
         }
         let ignore = ignored(&root, session.config());
-        let now = Snapshot::take(&root, &ignore);
+        let now = Snapshot::take(&root, &ignore, session.dependencies());
         if now == watched {
             continue;
         }
         // Let a burst of saves settle before rebuilding.
         tokio::time::sleep(POLL).await;
-        watched = Snapshot::take(&root, &ignore);
+        watched = Snapshot::take(&root, &ignore, session.dependencies());
         let changed = if stamp(config_path) != config_stamp {
             config_stamp = stamp(config_path);
             eprintln!("config changed; restarting plugins");
@@ -160,12 +164,15 @@ fn stamp(path: &Path) -> Option<(SystemTime, u64)> {
     Some((meta.modified().ok()?, meta.len()))
 }
 
-/// Modification times and sizes of every watched file.
+/// Modification times and sizes of every watched file: those under the
+/// site directory, and the files the last build depended on (which may be
+/// elsewhere, such as the code of generated API pages; a missing one counts
+/// as watched too, so creating it rebuilds).
 #[derive(Debug, PartialEq, Eq)]
 struct Snapshot(BTreeMap<PathBuf, (SystemTime, u64)>);
 
 impl Snapshot {
-    fn take(root: &Path, ignore: &[PathBuf]) -> Self {
+    fn take(root: &Path, ignore: &[PathBuf], extra: &BTreeSet<PathBuf>) -> Self {
         fn walk(dir: &Path, ignore: &[PathBuf], out: &mut BTreeMap<PathBuf, (SystemTime, u64)>) {
             let Ok(entries) = std::fs::read_dir(dir) else {
                 return;
@@ -189,6 +196,10 @@ impl Snapshot {
         }
         let mut files = BTreeMap::new();
         walk(root, ignore, &mut files);
+        for path in extra {
+            let stamp = stamp(path).unwrap_or((SystemTime::UNIX_EPOCH, u64::MAX));
+            files.entry(path.clone()).or_insert(stamp);
+        }
         Self(files)
     }
 }
@@ -443,12 +454,13 @@ mod tests {
         std::fs::create_dir_all(dir.join("site")).unwrap();
         std::fs::write(dir.join("docs/a.md"), "a").unwrap();
         let ignore = [dir.join("site")];
-        let before = Snapshot::take(&dir, &ignore);
+        let none = BTreeSet::new();
+        let before = Snapshot::take(&dir, &ignore, &none);
         std::fs::write(dir.join("site/out.html"), "ignored").unwrap();
         std::fs::write(dir.join(".hidden"), "ignored").unwrap();
-        assert_eq!(Snapshot::take(&dir, &ignore), before);
+        assert_eq!(Snapshot::take(&dir, &ignore, &none), before);
         std::fs::write(dir.join("docs/a.md"), "a longer text").unwrap();
-        assert_ne!(Snapshot::take(&dir, &ignore), before);
+        assert_ne!(Snapshot::take(&dir, &ignore, &none), before);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
