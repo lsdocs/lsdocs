@@ -112,17 +112,41 @@ Decisions:
   tasks list the packages (`PYTHON_PACKAGES`, `NODE_PACKAGES`).
 
 ### 10b: A public API worth binding
-- [ ] Settings: one `Settings` type for the docutils settings the parser
+- [x] Settings: one `Settings` type for the docutils settings the parser
       honors (`doctitle`, `report_level`, `pep_references`,
       `rfc_references`, `tab_width`, `line_length_limit`, `smart_quotes`,
       `sectsubtitle_xform`, `toc_backlinks`, `auto_id_prefix`, ...), with
       docutils' defaults; the builder methods stay as shorthands.
-- [ ] Stable tree accessors (kinds, attributes, children, spans) and a
+- [x] Stable tree accessors (kinds, attributes, children, spans) and a
       serde representation of the tree, so bindings and tools can exchange
       it as JSON or MessagePack.
-- [ ] Writers: pseudo-XML (exists), and docutils' XML writer, checked
+- [x] Writers: pseudo-XML (exists), and docutils' XML writer, checked
       against docutils. HTML is lsdocs' job, not the library's.
-- [ ] rustdoc for every public item, with examples; the crate's README.
+- [x] rustdoc for every public item, with examples; the crate's README.
+
+Decisions:
+- `Settings` covers the settings that change the tree `publish_doctree`
+  builds: `doctitle_xform`, `docinfo_xform`, `sectsubtitle_xform`,
+  `sectnum_xform`, `title`, `tab_width`, `line_length_limit`,
+  `raw_enabled`, `pep_references` (with `pep_base_url`,
+  `pep_file_url_template`), `rfc_references` (with `rfc_base_url`),
+  `trim_footnote_reference_space`, `toc_backlinks`, `id_prefix`,
+  `auto_id_prefix` and `strip_comments`. Fields have docutils' names and
+  defaults, so with `serde` a docutils configuration maps onto them
+  directly (unknown names are an error). `report_level`, `halt_level` and
+  the writer-side settings (`strip_classes`, `strip_elements_with_classes`)
+  don't change that tree, so they are left out; `file_insertion_enabled`
+  stays the presence of a `FileLoader`. The rest is on the TODO list.
+- A conformance case may have a `<name>.settings.json`, read by docutils
+  and lsdocs-rst alike; ten `settings_*` cases cover the settings.
+- serde is an optional feature (`serde`), so the library keeps one
+  dependency by default. The JSON form: elements are
+  `{kind, attributes?, children?, span?}`, text is `{text, span?}`,
+  attribute values are plain JSON values.
+- The XML writer is checked on every case (`<name>.xml`, written by
+  docutils' `XMLTranslator` with `indents` on, from the transformed tree).
+  Its generator comment names lsdocs-rst instead of docutils; raw XML is
+  not checked for well-formedness.
 
 ### 10c: Python package (`bindings/rst/python`)
 - [ ] pyo3 + maturin, abi3. `parse(text, **settings)` returns a tree of
@@ -377,13 +401,24 @@ Things left open along the way, by area. The phases above may pick them up.
 - [ ] Messages for `:url:` failures are close to Python's, not identical.
 - [ ] `nur fuzz rst` runs without file access, so includes are not fuzzed;
       add a mode with generated include files.
-- [ ] PEP and RFC references, and most docutils settings, are not
-      configurable yet (10b).
+- [ ] Settings not supported yet: `smart_quotes` (and
+      `smartquotes_locales`), `character_level_inline_markup`,
+      `language_code` (labels and bibliographic field names are English),
+      `root_prefix` (absolute include paths), `syntax_highlight` (`code`
+      blocks are always as with `none`), `expose_internals`, and the
+      `Decorations` settings (`generator`, `datestamp`, `source_link`,
+      `source_url`).
+- [ ] PEP and RFC references in plain text match ASCII digits only;
+      Python's `\d` also matches other Unicode decimal digits.
+- [ ] The XML writer doesn't check raw XML for well-formedness (docutils
+      warns about invalid raw XML).
 - [ ] Report docutils' `TargetNotes` infinite loop upstream: a paragraph
       with an embedded-URI reference and its own target, plus
       `target-notes`.
 
 ### `parser-rst`
+- [ ] Take docutils settings from the plugin's options (a `settings`
+      table deserialized into `lsdocs_rst::Settings`).
 - [ ] Inline semantics are lost: `subscript`, `superscript`,
       `abbreviation`, `acronym` and `inline` with classes become their
       text; `title_reference` becomes emphasis. Needs inline node kinds or
