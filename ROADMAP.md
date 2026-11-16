@@ -456,9 +456,32 @@ depending on the framework. Static extraction first: no project code runs.
 - [ ] **Rust:** from rustdoc's JSON output (needs a nightly toolchain, and
       the format is unstable: pin and check its version), or from `syn`
       without type information. Decide early.
-- [ ] **Python:** a Rust Python parser (e.g. ruff's) for modules and stub
-      files, with type annotations and docstrings; later, optional runtime
-      inspection for extension modules.
+- [x] **Python:** a Rust Python parser (ruff's) for modules and stub
+      files, with type annotations and docstrings (`apidoc-python`).
+- [ ] Python: re-exports (`from ._native import Context` in a package's
+      `__init__` documents nothing; Sphinx's autodoc imports and would
+      show it), and optional runtime inspection for extension modules.
+
+Decisions (Python):
+- **ruff's parser, and MSRV 1.97.** `ruff_python_parser` /
+  `ruff_python_ast` / `ruff_text_size` are on crates.io as Astral's
+  internal crates: current with Python's syntax, but every release needs
+  Rust 1.95+, so the workspace MSRV went from 1.89 to 1.97 (the user's
+  call), and they are pinned exactly (`=0.0.22`) since their API may
+  change in any release.
+- Statically, like the rest: packages from directories (`__init__`,
+  modules, subpackages; `_`-names skipped), a `.pyi` stub instead of the
+  module beside it, the first `@overload`. A class's signature is its
+  `__init__`'s; `self.x` assignments in `__init__` with an annotation or
+  a docstring are fields; attribute docstrings (a string after an
+  assignment) document variables. `__all__`, `_`-names and undocumented
+  special methods decide what is private.
+- Docstrings are reStructuredText by default, as in most Python code.
+  The framework option `primary` declares the roles without their domain
+  prefix (`:func:`), as Sphinx's `primary_domain` makes them work; only
+  roles, since unprefixed directives (`class`) clash with docutils'.
+- The docs site documents the Python plugin SDK and `lsdocs-rst` (under
+  `api/`), part of this phase's exit.
 - [ ] **TypeScript:** a Rust TypeScript parser (e.g. oxc) for `.ts` and
       `.d.ts` files, with TSDoc; types as written, without the type checker.
 - [ ] **C/C++:** libclang (accurate, needs LLVM installed) or tree-sitter

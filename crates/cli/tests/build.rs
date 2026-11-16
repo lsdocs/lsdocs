@@ -302,7 +302,7 @@ fn config_errors_are_reported() {
     assert!(!output.status.success());
     let err = stderr(&output);
     assert!(
-        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: parser-markdown, parser-rst, render-html, sphinx-addons, transform-highlight, transform-links, transform-nav, transform-toc)"),
+        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: apidoc-python, parser-markdown, parser-rst, render-html, sphinx-addons, transform-highlight, transform-links, transform-nav, transform-toc)"),
         "{err}"
     );
 
@@ -382,4 +382,68 @@ fn included_files_invalidate_cached_results() {
     let (page, _) = build();
     assert!(page.contains("<em>here</em>"), "{page}");
     let _ = std::fs::remove_dir_all(&site);
+}
+
+/// A site documenting a Python package, its plugins in-process or out of
+/// process: the API plugin asks the host to parse docstrings
+/// (`site/parse`), which must work across a connection too.
+fn api_site(transport: Option<&str>) -> BTreeMap<String, Vec<u8>> {
+    let site = temp_dir(&format!("api-{}", transport.unwrap_or("builtin")));
+    write(
+        &site.join("src/pkg/__init__.py"),
+        "\"\"\"The *package*.\"\"\"\n\ndef run(x: int = 1) -> str:\n    \"\"\"Run it, see :py:func:`run`.\n\n    Args:\n        x: How often.\n    \"\"\"\n",
+    );
+    write(
+        &site.join("docs/index.md"),
+        "# Home\n\nCall {py:func}`pkg.run`.\n",
+    );
+    let mut config = String::new();
+    for (name, builtin, options) in [
+        ("markdown", "parser-markdown", ""),
+        ("rst", "parser-rst", ""),
+        (
+            "python",
+            "apidoc-python",
+            "options = { paths = [\"src/pkg\"] }\n",
+        ),
+        ("links", "transform-links", ""),
+        ("html", "render-html", ""),
+    ] {
+        config.push_str(&format!("\n[[plugins]]\nname = \"{name}\"\n{options}"));
+        match transport {
+            None => config.push_str(&format!("builtin = \"{builtin}\"\n")),
+            Some(t) => config.push_str(&format!(
+                "command = ['{LSDOCS}', 'plugin', '{builtin}']\ntransport = \"{t}\"\n"
+            )),
+        }
+    }
+    let config_path = site.join("lsdocs.toml");
+    write(&config_path, &config);
+    let config_arg = config_path.to_string_lossy().into_owned();
+    let output = lsdocs(&["build", "--config", config_arg.as_str()]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(!stderr(&output).contains("warning"), "{}", stderr(&output));
+    let files = read_tree(&site.join("site"));
+    let _ = std::fs::remove_dir_all(&site);
+    files
+}
+
+#[test]
+fn api_pages_build_the_same_out_of_process() {
+    let in_process = api_site(None);
+    let files: Vec<_> = in_process.keys().map(String::as_str).collect();
+    assert_eq!(
+        files,
+        ["api/py/index.html", "api/py/pkg.html", "index.html"]
+    );
+    let page = String::from_utf8(in_process["api/py/pkg.html"].clone()).unwrap();
+    assert!(page.contains("<em>package</em>"), "{page}");
+    assert!(page.contains("How often."), "{page}");
+    let index = String::from_utf8(in_process["index.html"].clone()).unwrap();
+    assert!(
+        index.contains("href=\"api/py/pkg.html#py.pkg.run\""),
+        "{index}"
+    );
+    assert_eq!(in_process, api_site(Some("stdio")), "stdio differs");
+    assert_eq!(in_process, api_site(Some("pipe")), "pipe differs");
 }
