@@ -36,7 +36,7 @@ deviations here as you go, under the phase they belong to.
 
 ## Where things stand
 
-Phases 0-9 are done (see [HISTORY.md](HISTORY.md)):
+Phases 0-10 are done (0-9 are recorded in [HISTORY.md](HISTORY.md)):
 
 | Phase | Result |
 |---|---|
@@ -47,6 +47,7 @@ Phases 0-9 are done (see [HISTORY.md](HISTORY.md)):
 | 7 | Parallel pipeline, build cache, `lsdocs serve`, binding performance. |
 | 8 | `lsdocs-rst`, a docutils port checked against docutils (parser, directives, transforms, file access), and `parser-rst`. |
 | 9 | Protocol `1.0-rc.0` and its compatibility policy, the finished spec, a plugin written from the spec alone, and the docs site. |
+| 10 | `lsdocs-rst` from Python and Node.js: docutils' settings, a serde form of the tree and the XML writer, and the `lsdocs-rst` / `@lsdocs/rst` packages (below). |
 
 Not done from those phases: packaging and publishing (5c, 9), freezing the
 protocol as 1.0 (9), and the items in the [TODO list](#todo-list).
@@ -79,7 +80,7 @@ publishing anything.
 
 ---
 
-## Phase 10: The reStructuredText library, from other languages
+## Phase 10: The reStructuredText library, from other languages (done)
 
 **Goal:** `lsdocs-rst` usable from Python and JavaScript, as packages of its
 own, not only inside lsdocs. A docutils-compatible parser that is much faster
@@ -180,13 +181,34 @@ Decisions:
   elements lose their transform, so convert transformed trees.
 
 ### 10d: Node.js package (`bindings/rst/node`)
-- [ ] napi-rs: `parse(text, settings)` returning plain objects, with types
+- [x] napi-rs: `parse(text, settings)` returning plain objects, with types
       (`.d.ts`) for the tree and settings; directives, roles and the file
       loader as JS functions.
-- [ ] Tests: the conformance cases run through the package too.
+- [x] Tests: the conformance cases run through the package too.
+
+Decisions:
+- The tree is plain JSON-shaped data (`{kind, attributes?, children?,
+  span?}`, `{text, span?}`), typed in `index.d.ts`, with helper functions
+  (`findAll`, `traverse`, `astext`, `pformat`, `toXml`) instead of
+  classes. Values cross the addon as JSON strings, as in the plugin
+  binding.
+- Parsing is synchronous. JS runs on one thread, so the GIL trick of the
+  Python package doesn't apply: `parse()` runs the parser on a scoped
+  worker thread and the JS thread serves it, running JS directives, roles
+  and loaders when the worker asks; a directive's context sends its parse
+  requests to the worker and keeps serving JS calls (nested directives)
+  until the answer comes. The threads take turns like one call stack.
+- Exceptions stay on the JS side: the wrapper turns a `DirectiveError`
+  into a message, a Node.js system error (`code` `E...`) from a loader into
+  a failed read, and keeps any other exception to throw from `parse()`.
+- Directive specs use the same option kind names as the Python package
+  (docutils' conversion function names).
 
 **Exit:** both packages parse the conformance cases to docutils' trees, and
-a directive written in each language works.
+a directive written in each language works. Met: the pytest and
+`node --test` suites run every case (parser, transforms and XML), and each
+has directives that parse their content, nest, report errors and take
+options.
 
 ## Phase 11: Sphinx add-ons
 
