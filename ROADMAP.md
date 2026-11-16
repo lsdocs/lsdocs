@@ -70,7 +70,7 @@ lsdocs/
                                                             (planned, Phase 12)
   bindings/
     plugin/python/  plugin/node/    the plugin SDK bindings
-    rst/python/     rst/node/       lsdocs-rst bindings     (planned, Phase 10)
+    rst/python/     rst/node/       lsdocs-rst bindings
   docs/  examples/  schema/  fixtures/  spec/  scripts/  tools/
 ```
 
@@ -149,15 +149,35 @@ Decisions:
   not checked for well-formedness.
 
 ### 10c: Python package (`bindings/rst/python`)
-- [ ] pyo3 + maturin, abi3. `parse(text, **settings)` returns a tree of
+- [x] pyo3 + maturin, abi3. `parse(text, **settings)` returns a tree of
       Python objects (kind, attributes, children, span), with `pformat()`
       and `to_dict()`.
-- [ ] Directives and roles written in Python, registered on a parser (the
+- [x] Directives and roles written in Python, registered on a parser (the
       `Directive` and `Role` traits over Python callables), and a file
       loader callback.
-- [ ] Optional: conversion to a real `docutils.nodes.document`, for use
+- [x] Optional: conversion to a real `docutils.nodes.document`, for use
       with docutils writers and Sphinx, if docutils is installed.
-- [ ] Tests: the conformance cases run through the package too.
+- [x] Tests: the conformance cases run through the package too.
+
+Decisions:
+- The Python tree is plain Python objects (`Element`, `Text`), built from
+  the crate's serde form, so it is mutable and needs no Rust to read.
+  Writers (`pformat`, `to_xml`) take it back the same way.
+- A Python directive's context methods (`parse_content`, `parse_inline`,
+  `message`) need the parser's `DirectiveContext`, which borrows the
+  parse. Instead of `unsafe` lifetime erasure, the Python callable runs on
+  a scoped worker thread and the parsing thread answers its requests over
+  a channel until it returns; the context releases the GIL while waiting,
+  so Python directives nest. A context used after its directive returned
+  raises `RuntimeError`.
+- `DirectiveError` (and, for loaders, `OSError`) are reported in the
+  document as docutils would; any other exception from a directive, role
+  or loader is raised from `parse()` once the parse is done.
+- Option kinds are given by docutils' conversion function names (or the
+  functions themselves), so docutils directive classes port with few
+  changes.
+- `to_docutils()` converts kinds by docutils node class name; `pending`
+  elements lose their transform, so convert transformed trees.
 
 ### 10d: Node.js package (`bindings/rst/node`)
 - [ ] napi-rs: `parse(text, settings)` returning plain objects, with types
