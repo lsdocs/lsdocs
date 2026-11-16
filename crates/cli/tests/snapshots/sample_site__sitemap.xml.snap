@@ -11,4 +11,5 @@ expression: text
   <url><loc>https://example.com/sample/reference/cli.html</loc></url>
   <url><loc>https://example.com/sample/reference/rst.html</loc></url>
   <url><loc>https://example.com/sample/reference/sphinx.html</loc></url>
+  <url><loc>https://example.com/sample/genindex.html</loc></url>
 </urlset>

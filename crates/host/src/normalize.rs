@@ -17,6 +17,15 @@ use lsdocs_protocol::{Diagnostic, Severity};
 /// Normalizes every document, returning the problems found.
 pub(crate) fn normalize(documents: &mut [Document]) -> Vec<Diagnostic> {
     let sources: BTreeSet<String> = documents.iter().map(|d| d.source.clone()).collect();
+    normalize_among(documents, &sources)
+}
+
+/// Normalizes `documents`, which are among the site's documents
+/// `sources` (e.g. documents a plugin generated, joining the others).
+pub(crate) fn normalize_among(
+    documents: &mut [Document],
+    sources: &BTreeSet<String>,
+) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for doc in documents {
         assign_ids(doc, &mut diagnostics);
@@ -25,7 +34,7 @@ pub(crate) fn normalize(documents: &mut [Document]) -> Vec<Diagnostic> {
             if let Node::Link(link) = node
                 && link.target.is_none()
             {
-                link.target = link_target(&link.url, &source, &sources);
+                link.target = link_target(&link.url, &source, sources);
             }
         });
     }

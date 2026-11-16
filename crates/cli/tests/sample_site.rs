@@ -62,6 +62,7 @@ fn sample_site_output() {
     assert_eq!(
         names,
         [
+            "genindex.html",
             "guide/configuration.html",
             "guide/getting-started.html",
             "guide/myst.html",

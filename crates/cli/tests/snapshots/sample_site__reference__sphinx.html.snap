@@ -110,7 +110,7 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <h1>Sphinx add-ons <a class="anchor" href="#sphinx-page" aria-label="Link to this section">#</a></h1>
 <p>This page uses the directives and roles of <code>sphinx-addons</code>. They work
 in Markdown too: see <a href="../guide/myst.html">Directives in Markdown</a>.</p>
-<aside class="admonition versionadded">
+<span id="index-0"></span><aside class="admonition versionadded">
 <p class="admonition-title">Added in version 0.1</p>
 <p>Pages can use Sphinx&#39;s directives.</p>
 </aside>
@@ -122,7 +122,9 @@ in Markdown too: see <a href="../guide/myst.html">Directives in Markdown</a>.</p
 </figure>
 <p><a href="#plugin-entry">Listing 1</a> shows the entry. Press <kbd class="kbd">Ctrl+C</kbd> to stop
 <strong>lsdocs serve</strong>, pick <span class="menuselection">File ‣ <span class="accelerator">S</span>ave</span>, and read
-the <abbr class="abbr" title="table of contents">TOC</abbr>.</p>
+the <abbr class="abbr" title="table of contents">TOC</abbr>. Everything indexed is in the
+<a href="../genindex.html">Index</a>.</p>
+<h2 class="rubric">Terms</h2>
 <div class="glossary"><dl>
 <dt><span id="term-plugin"></span>Plugin</dt>
 <dd><p>A program lsdocs talks to.</p>
@@ -144,6 +146,8 @@ the <abbr class="abbr" title="table of contents">TOC</abbr>.</p>
 </section>
 <div class="backlinks"><p><strong>Pages linking here</strong></p>
 <ul>
+<li><p><a href="../genindex.html">Index</a></p>
+</li>
 <li><p><a href="../guide/myst.html">Directives in Markdown</a></p>
 </li>
 </ul>

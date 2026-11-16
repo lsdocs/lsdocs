@@ -594,7 +594,7 @@ async fn run_pipeline(
             .transform
             .as_ref()
             .is_some_and(|t| t.collect);
-        let selected: Vec<usize> = (0..documents.len())
+        let mut selected: Vec<usize> = (0..documents.len())
             .filter(|&i| plugin.wants_document(&documents[i]))
             .collect();
         // Apply results depend on everything collected, so their cache keys
@@ -631,7 +631,36 @@ async fn run_pipeline(
             if cache.is_some() {
                 collected_digest = cache::digest(&collected);
             }
-            plugin.set_collected(collected).await?;
+            let generated = plugin.set_collected(collected).await?;
+            report.diagnostics.extend(generated.diagnostics);
+            // Generated documents join the site, after a check that their
+            // paths are free.
+            let mut sources: std::collections::BTreeSet<String> =
+                documents.iter().map(|d| d.source.clone()).collect();
+            let mut new = Vec::new();
+            for document in generated.documents {
+                if !is_safe_output_path(&document.source)
+                    || !sources.insert(document.source.clone())
+                {
+                    report.diagnostics.push(Diagnostic {
+                        severity: Severity::Error,
+                        message: format!(
+                            "plugin `{}` generated a document at `{}`, which is taken or not a valid path",
+                            plugin.name, document.source
+                        ),
+                        ..Diagnostic::default()
+                    });
+                    continue;
+                }
+                new.push(document);
+            }
+            report
+                .diagnostics
+                .extend(normalize::normalize_among(&mut new, &sources));
+            for document in new {
+                selected.push(documents.len());
+                documents.push(document);
+            }
         }
         let collected_digest = Arc::new(collected_digest);
         let inputs: Vec<(usize, Document)> = selected

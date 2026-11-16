@@ -1,0 +1,165 @@
+---
+source: crates/cli/tests/sample_site.rs
+expression: text
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index | lsdocs sample</title>
+<style>
+:root {
+  --fg: #1f2328; --muted: #59636e; --bg: #ffffff; --soft: #f6f8fa;
+  --border: #d1d9e0; --accent: #0969da;
+  --hl-comment: #59636e; --hl-keyword: #cf222e; --hl-string: #0a3069;
+  --hl-constant: #0550ae; --hl-name: #8250df; --hl-tag: #116329; --hl-param: #953800;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e6edf3; --muted: #9198a1; --bg: #0d1117; --soft: #151b23;
+    --border: #3d444d; --accent: #4493f8;
+    --hl-comment: #9198a1; --hl-keyword: #ff7b72; --hl-string: #a5d6ff;
+    --hl-constant: #79c0ff; --hl-name: #d2a8ff; --hl-tag: #7ee787; --hl-param: #ffa657;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; color: var(--fg); background: var(--bg);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+header, .layout, footer { max-width: 48rem; margin: 0 auto; padding: 0 1rem; }
+.has-nav header, .has-nav .layout, .has-nav footer { max-width: 68rem; }
+.has-nav .layout { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: 2rem; }
+@media (max-width: 48rem) { .has-nav .layout { display: block; } }
+header { padding-top: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+header a { color: var(--fg); font-weight: 600; text-decoration: none; }
+main { padding-top: 1rem; padding-bottom: 2rem; }
+.site-nav { padding-top: 2rem; font-size: 0.9375rem; }
+.site-nav ul { list-style: none; margin: 0; padding: 0; }
+.site-nav ul ul { padding-left: 1rem; }
+.site-nav li { margin: 0.2rem 0; }
+.site-nav a { color: var(--fg); text-decoration: none; }
+.site-nav a:hover { color: var(--accent); }
+.site-nav span { color: var(--muted); font-weight: 600; }
+.site-nav [aria-current="page"] { color: var(--accent); font-weight: 600; }
+.pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1rem; border-top: 1px solid var(--border); }
+.pager .next { margin-left: auto; text-align: right; }
+footer { color: var(--muted); font-size: 0.875rem; padding-bottom: 2rem; }
+a { color: var(--accent); }
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin: 1.5em 0 0.5em; }
+code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font-size: 0.875em; }
+code { background: var(--soft); padding: 0.1em 0.3em; border-radius: 4px; }
+pre { background: var(--soft); padding: 1rem; overflow-x: auto; border-radius: 6px; }
+pre code { background: none; padding: 0; }
+blockquote { margin: 0; padding: 0 1rem; color: var(--muted); border-left: 4px solid var(--border); }
+table { border-collapse: collapse; }
+th, td { border: 1px solid var(--border); padding: 0.3rem 0.75rem; }
+img { max-width: 100%; }
+.hl-comment { color: var(--hl-comment); font-style: italic; }
+.hl-keyword, .hl-storage, .hl-invalid { color: var(--hl-keyword); }
+.hl-string { color: var(--hl-string); }
+.hl-constant, .hl-support, .hl-attribute-name { color: var(--hl-constant); }
+.hl-entity.hl-name, .hl-variable.hl-function { color: var(--hl-name); }
+.hl-entity.hl-name.hl-tag { color: var(--hl-tag); }
+.hl-variable.hl-parameter { color: var(--hl-param); }
+.hl-markup.hl-heading { color: var(--hl-constant); font-weight: 600; }
+.toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
+.toc ul { margin: 0; padding-left: 1.25rem; }
+.toc p { margin: 0; }
+.anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
+h1:hover .anchor, h2:hover .anchor, h3:hover .anchor, h4:hover .anchor,
+h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
+.admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
+  border-left: 4px solid var(--accent); border-radius: 6px; }
+.admonition.warning, .admonition.caution, .admonition.important { border-left-color: var(--hl-keyword); }
+.admonition > :last-child { margin-bottom: 0; }
+.admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
+dt { font-weight: 600; }
+dd { margin: 0 0 0.5rem 1.5rem; }
+.footnote { font-size: 0.875rem; color: var(--muted); }
+.footnote-label { margin: 0; }
+.backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.backlinks p { margin: 0 0 0.25rem; }
+.backlinks ul { margin: 0; padding-left: 1.25rem; }
+</style>
+</head>
+<body class="has-nav">
+<header><a href="index.html">lsdocs sample</a></header>
+<div class="layout">
+<nav class="site-nav" aria-label="Site">
+<ul>
+<li><a href="index.html">Welcome</a></li>
+<li><span>Guide</span>
+<ul>
+<li><a href="guide/getting-started.html">Getting started</a></li>
+<li><a href="guide/configuration.html">Configuration</a></li>
+<li><a href="guide/myst.html">Directives in Markdown</a></li>
+</ul></li>
+<li><span>Reference</span>
+<ul>
+<li><a href="reference/cli.html">CLI reference</a></li>
+<li><a href="reference/rst.html">reStructuredText</a></li>
+<li><a href="reference/sphinx.html">Sphinx add-ons</a></li>
+</ul></li>
+</ul>
+</nav>
+<main>
+<section id="genindex">
+<h1>Index <a class="anchor" href="#genindex" aria-label="Link to this section">#</a></h1>
+<div class="toc"><ul>
+<li><p><a href="#d">D</a></p>
+</li>
+<li><p><a href="#p">P</a></p>
+</li>
+<li><p><a href="#s">S</a></p>
+</li>
+</ul>
+</div>
+<section id="d">
+<h2>D <a class="anchor" href="#d" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><p>directives</p>
+<ul>
+<li><p><a href="reference/sphinx.html#index-0">Sphinx</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="p">
+<h2>P <a class="anchor" href="#p" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><p>plugins</p>
+<ul>
+<li><p><a href="reference/sphinx.html#index-0">sphinx-addons</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="s">
+<h2>S <a class="anchor" href="#s" aria-label="Link to this section">#</a></h2>
+<ul>
+<li><p>Sphinx</p>
+<ul>
+<li><p><a href="reference/sphinx.html#index-0">directives</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+<div class="backlinks"><p><strong>Pages linking here</strong></p>
+<ul>
+<li><p><a href="reference/sphinx.html">Sphinx add-ons</a></p>
+</li>
+</ul>
+</div>
+
+</main>
+</div>
+<footer>Built with lsdocs</footer>
+</body>
+</html>

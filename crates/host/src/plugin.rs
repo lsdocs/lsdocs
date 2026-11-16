@@ -15,7 +15,7 @@ use lsdocs_protocol::{
     Capabilities, Diagnostic, InitializeParams, LogLevel, PROTOCOL_VERSION, ParseParams,
     ParseResult, RenderParams, RenderResult, RenderSiteParams, RenderSiteResult,
     TransformApplyParams, TransformApplyResult, TransformCollectParams, TransformCollectResult,
-    TransformCollectedParams, notification, request,
+    TransformCollectedParams, TransformCollectedResult, notification, request,
 };
 use lsdocs_rpc::transport::{Transport, pipe};
 use lsdocs_rpc::{Options, Peer, Router};
@@ -349,20 +349,28 @@ impl PluginClient {
     /// Hands the plugin what it collected from every document, once before
     /// the apply pass: sent with `transform/collected`, or kept here for an
     /// in-process plugin.
-    pub async fn set_collected(&self, collected: Value) -> Result<(), HostError> {
+    pub async fn set_collected(
+        &self,
+        collected: Value,
+    ) -> Result<TransformCollectedResult, HostError> {
         match &self.kind {
-            Kind::InProcess { .. } => {
+            Kind::InProcess { plugin, ctx } => {
+                let shared = Arc::new(collected);
                 *self
                     .collected
                     .lock()
-                    .unwrap_or_else(PoisonError::into_inner) = Arc::new(collected);
-                Ok(())
+                    .unwrap_or_else(PoisonError::into_inner) = Arc::clone(&shared);
+                plugin
+                    .generate(&shared, ctx)
+                    .await
+                    .map_err(|e| e.to_string())
             }
             Kind::Remote { peer, .. } => peer
                 .request::<request::TransformCollected>(&TransformCollectedParams { collected })
                 .await
-                .map_err(|e| self.phase_error("transform/collected", "the site", e.to_string())),
+                .map_err(|e| e.to_string()),
         }
+        .map_err(|message| self.phase_error("transform/collected", "the site", message))
     }
 
     /// Transforms one document. Collected data comes from

@@ -13,8 +13,9 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 const LSDOCS: &str = env!("CARGO_BIN_EXE_lsdocs");
-const PLUGINS: [(&str, &str); 6] = [
+const PLUGINS: [(&str, &str); 7] = [
     ("markdown", "parser-markdown"),
+    ("sphinx", "sphinx-addons"),
     ("toc", "transform-toc"),
     ("links", "transform-links"),
     ("nav", "transform-nav"),
@@ -49,7 +50,7 @@ fn write_content(site: &Path) {
     );
     write(
         &docs.join("guide/intro.md"),
-        "# Intro\n\nOnly one heading, so no TOC. [Gone](missing.md).\n",
+        "# Intro\n\nOnly one heading, so no TOC. [Gone](missing.md). {index}`Intro page`.\n",
     );
     write(&docs.join("img/logo.svg"), "<svg/>");
     write(&docs.join(".hidden.md"), "# Not built\n");
@@ -143,6 +144,7 @@ fn in_process_and_out_of_process_builds_match() {
     assert_eq!(
         files,
         [
+            "genindex.html",
             "guide/intro.html",
             "img/logo.svg",
             "index.html",

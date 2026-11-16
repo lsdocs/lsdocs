@@ -48,7 +48,7 @@ Phases 0-10 are done (0-9 are recorded in [HISTORY.md](HISTORY.md)):
 | 8 | `lsdocs-rst`, a docutils port checked against docutils (parser, directives, transforms, file access), and `parser-rst`. |
 | 9 | Protocol `1.0-rc.0` and its compatibility policy, the finished spec, a plugin written from the spec alone, and the docs site. |
 | 10 | `lsdocs-rst` from Python and Node.js: docutils' settings, a serde form of the tree and the XML writer, and the `lsdocs-rst` / `@lsdocs/rst` packages (below). |
-| 11 (underway) | Syntax extensions in the protocol and both parsers, and the `sphinx-addons` plugin: Sphinx's directives and roles in reStructuredText and Markdown. |
+| 11 (exit check open) | Syntax extensions in the protocol and both parsers, generated documents, and the `sphinx-addons` plugin: Sphinx's directives and roles in reStructuredText and Markdown, toctree navigation and numbering, the index page. |
 
 Not done from those phases: packaging and publishing (5c, 9), freezing the
 protocol as 1.0 (9), and the items in the [TODO list](#todo-list).
@@ -289,16 +289,15 @@ Decisions:
 - [x] Content: `only` (by tags), `centered`, `hlist`, `glossary`,
       `tabularcolumns` (accepted, ignored), `sectionauthor` /
       `codeauthor`, `acks`.
-- [ ] `rubric` with Sphinx's options (`:heading-level:`); docutils'
-      `rubric` works.
+- [x] `rubric` with Sphinx's options (`:heading-level:`).
 - [x] `toctree` (`:maxdepth:`, `:caption:`, `:hidden:`, `:glob:`,
       `:titlesonly:`, `:reversed:`) as a list of links to the pages it
       names and their sections.
-- [ ] `toctree` feeding `transform-nav`: a site whose pages have toctrees
+- [x] `toctree` feeding `transform-nav`: a site whose pages have toctrees
       gets its navigation from them instead of from its directories; and
       `:numbered:` (section numbers, `numref` to sections).
-- [ ] `index` directive and role (they make anchors now), and a generated
-      index page (needs generated documents, 12a).
+- [x] `index` directive and role, and a generated index page (with the
+      generated documents of 12a, done here).
 - [x] Math: `math` with `:label:` and equation numbering, `:eq:`.
 
 Decisions:
@@ -313,6 +312,28 @@ Decisions:
 - `numfig` numbers figures, tables and code blocks with a caption per
   page (no section numbers), and prefixes their captions ("Fig. 1 ").
   Numbered equations get `\tag{n}`, which KaTeX and MathJax draw.
+- **Generated documents** (from 12a, needed for the index page; breaking
+  the release-candidate protocol is fine): `transform/collected` now
+  returns documents the plugin generates from what it collected
+  (`Transformer::generate` in the Rust SDK). The host checks their paths
+  are free, normalizes them, and they go through the plugin's apply
+  pass, later transformers and rendering. A plugin that does not collect
+  cannot generate; 12a can add a step of its own if a generator needs
+  none.
+- **Toctrees drive the navigation through a convention, not a coupling:**
+  `transform-nav` follows `nav_children` (a page's ordered child pages)
+  when the root `index` page has it, and `sphinx-addons` sets it from
+  toctrees (hidden ones too). Front matter can set it as well.
+- `:numbered:` numbers the pages a toctree names (1, 2, ...), their
+  sections below that, and the pages their own toctrees name after
+  their sections (Sphinx places those where the toctree is). The number
+  goes into the heading's text (`1.2. Title`), so references that take
+  the title show it.
+- The index page is `genindex.md` (`genindex.html`), generated only if a
+  page has index entries, and out of the navigation (`nav_exclude`);
+  entries are grouped by first letter, symbols last. `rubric` overrides
+  docutils' (a `custom:rubric` with `html_tag` `p` or `h1`-`h6`;
+  `render-html` honors `html_tag` on block custom nodes too).
 
 ### 11c: Roles
 - [x] Cross-references: `ref`, `doc`, `numref` (with `numfig` numbering),
@@ -328,7 +349,7 @@ Decisions:
 from Markdown in a test site, and a mid-sized Sphinx project (to be
 picked) builds without errors. The first half is met (the plugin's tests
 build the same pages from both formats; the sample site uses both); the
-second is open, with the unchecked items above.
+second is open: no Sphinx project has been picked and built yet.
 
 ## Phase 12: API documentation framework
 
@@ -337,11 +358,11 @@ C/C++ and Rust. A language-neutral framework does the common work; each
 language is its own package that depends on it and only extracts.
 
 ### 12a: Platform additions
-- [ ] **Generated documents:** a new, additive protocol capability that
-      lets a plugin add documents that have no source file (an API page per
-      module, an index page, a search page). Decide where it runs in the
-      pipeline (a "generate" step after parsing, so generated pages are
-      normalized, transformed and rendered like any other).
+- [x] **Generated documents:** done in Phase 11 (`transform/collected`
+      returns them; see 11b's decisions). Revisit if a generator needs no
+      collect pass.
+- [ ] Generated documents from the Python and Node.js plugin SDKs (only
+      the Rust SDK has `Transformer::generate`).
 - [ ] **Dependencies:** parsers and generators report the files a result
       depends on (source files read, included files), so the cache and
       `lsdocs serve` invalidate exactly; this replaces turning caching off.
