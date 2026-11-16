@@ -390,33 +390,65 @@ Decisions:
   deadlock; noted in the spec, not guarded.
 
 ### 12b: The framework (`crates/apidoc`)
-- [ ] The model: modules, namespaces and packages; classes, structs,
+- [x] The model: modules, namespaces and packages; classes, structs,
       interfaces, traits, enums and variants; functions, methods and
       overloads; fields and properties; constants, type aliases, macros.
       Signatures with parameters, defaults, types and generics; visibility,
-      inheritance, re-exports; source locations; the doc comment, raw and
-      parsed.
-- [ ] Doc comment formats, parsed into the document tree: Markdown,
-      reStructuredText (with `lsdocs-rst`), Google and NumPy docstring
-      sections, Doxygen / Javadoc / TSDoc tags, rustdoc's intra-doc links.
-- [ ] Cross-references: qualified names to anchors, across languages and
-      pages; inventory export and import (see the `ext-ref` TODO).
-- [ ] Domains, as Sphinx has them: object description directives
-      (`.. py:function::` and the like, with their signatures parsed) and
-      their roles (`:py:func:`, `:cpp:class:`, ...) for the standard
-      domains (`py`, `c`, `cpp`, `js`, `rst`, and `std`'s `option`,
-      `program`, `envvar`, `productionlist` / `token`), declared as
-      syntax extensions (11a) so they work in reStructuredText and
-      Markdown. The object model is the framework's, so hand-written and
-      generated API docs link to each other.
-- [ ] Output: pages (one per module, or per item for large APIs, as the
-      user chooses), and directives / Markdown blocks that place a single
-      item in a hand-written page (`autoclass`-style).
-- [ ] The plugin glue every language package uses: options (paths, which
-      items, private items or not, page layout), generated documents,
+      inheritance, re-exports; source locations; the doc comment, raw.
+- [x] Doc comment formats: Google and NumPy docstring sections, Sphinx
+      field lists, Doxygen / Javadoc / TSDoc tags, split out by the
+      framework; their text (Markdown, reStructuredText) parsed into the
+      document tree by the site's parsers (`site/parse`).
+- [ ] rustdoc's intra-doc links (with the Rust package).
+- [x] Cross-references: qualified names to anchors, across pages, in the
+      scope a reference is written in.
+- [ ] Inventory export and import (the `ext-ref` TODO).
+- [x] Domains: object description directives (`.. py:function::`, with
+      their signatures read), `module` / `currentmodule`, and roles
+      (`:py:func:`, `:cpp:class:`), declared as syntax extensions so they
+      work in reStructuredText and Markdown; hand-written and generated
+      items share one index.
+- [ ] The domains with no extractor: `rst` (`rst:directive`, `rst:role`)
+      and `std`'s `option` / `program`, `envvar` and `productionlist` /
+      `token`. (`py`, `c`, `cpp`, `js` come with their language packages.)
+- [x] Output: a page per module, plus an index page; `<domain>:auto`
+      places an item (with its members) in a hand-written page.
+- [ ] A page per item, for large APIs (the user's choice).
+- [x] The plugin glue every language package uses: options (output,
+      private items, doc markup and style), generated documents,
       dependencies for the cache.
-- [ ] Tests with a small fake language, so the framework is tested without
+- [x] Tests with a small fake language, so the framework is tested without
       any real extractor.
+
+Decisions:
+- **Two crates.** `lsdocs-apidoc` is standalone (serde only): the model,
+  docstring sections, the index and name resolution, anchors. Rendering
+  is lsdocs' job, in `lsdocs-apidoc-plugin`, which language packages
+  build on: they implement `Language` (domain, extraction, signature
+  format and reading, the domain's object directives and roles) and get
+  a plugin from `apidoc_plugin::plugin`.
+- **Doc comment markup goes through the site's parsers** (`site/parse`,
+  12a): the framework splits the docstring sections, and each piece is
+  parsed by the parser of the language's doc format (`md` or `rst`),
+  with the site's syntax extensions, so roles in docstrings work.
+- **Anchors are `<domain>.<qualified name>`** (`py.pkg.mod.Class`), case
+  kept. References resolve in their scope (the item, then each scope
+  around it), then as the end of exactly one qualified name; an
+  ambiguous one is a warning and takes the first; a missing one is
+  shown as code without a warning (as Sphinx without `nitpicky`).
+- **Generated pages** are `<output>/<qualified name>.md` (default output
+  `api/<domain>`), one per module, each item a section (its heading the
+  kind and name, then the signature as a code block in the language,
+  then its documentation, then its members); `<output>/index.md` lists
+  the modules. Hand-placed items (`auto`, object directives) are
+  `custom:api-item` blocks without headings, so they don't change the
+  page's sections.
+- The pages come from `transform/collected` (11b), so extraction runs
+  once per build; its files are the result's dependencies. Apply results
+  depend on the generated pages too (the host's apply cache key now
+  covers generated documents), since references resolve against them.
+- Signatures in a generic notation (`name(a: int = 1) -> str`) by
+  default; languages override both writing and reading them.
 
 ### 12c: Language packages
 Each is a crate and plugin of its own (`plugins/apidoc-<language>`),

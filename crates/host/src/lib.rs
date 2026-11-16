@@ -649,6 +649,11 @@ async fn run_pipeline(
                 collected_digest = cache::digest(&collected);
             }
             let generated = plugin.set_collected(collected).await?;
+            // Applies may use what the plugin generated (an index of API
+            // items, say), so their keys cover it too.
+            if cache.is_some() && !generated.documents.is_empty() {
+                collected_digest = cache::digest(&(&collected_digest, &generated.documents));
+            }
             report.diagnostics.extend(generated.diagnostics);
             add_dependencies(&mut report, root, &generated.dependencies);
             // Generated documents join the site, after a check that their
