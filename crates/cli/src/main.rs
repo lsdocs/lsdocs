@@ -91,6 +91,8 @@ fn builtins() -> Builtins {
     let builtins = Builtins::new();
     #[cfg(feature = "apidoc-python")]
     let builtins = builtins.with("apidoc-python", lsdocs_apidoc_python::plugin);
+    #[cfg(feature = "apidoc-rust")]
+    let builtins = builtins.with("apidoc-rust", lsdocs_apidoc_rust::plugin);
     #[cfg(feature = "apidoc-typescript")]
     let builtins = builtins.with("apidoc-typescript", lsdocs_apidoc_typescript::plugin);
     builtins

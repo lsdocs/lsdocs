@@ -453,9 +453,45 @@ Decisions:
 ### 12c: Language packages
 Each is a crate and plugin of its own (`plugins/apidoc-<language>`),
 depending on the framework. Static extraction first: no project code runs.
-- [ ] **Rust:** from rustdoc's JSON output (the user's choice): needs a
-      nightly toolchain to run, and the format is unstable, so the plugin
-      pins `rustdoc-types` and checks `format_version`.
+- [x] **Rust:** from rustdoc's JSON output (`apidoc-rust`).
+- [ ] Rust: types in signatures are text, not links to their items
+      (rustdoc's JSON has the ids to link them). Links to unpublished
+      crates (`lsdocs_rpc`) go to docs.rs pages that do not exist yet.
+
+Decisions (Rust):
+- **rustdoc's JSON** (the user's call, over `syn`): exact types, paths
+  and re-exports, at the cost of a nightly toolchain. The format is
+  unstable, so `rustdoc-types` is pinned exactly (`=0.61.0`, format 61)
+  and the plugin runs a nightly that writes that format by default
+  (`NIGHTLY`, `nightly-2026-11-14`); a file in another format is an
+  error that says so. Bumping one means bumping the other. The plugin
+  needs only the workspace's MSRV; the tests and the docs site need that
+  nightly installed (CI installs it).
+- It runs `cargo +<toolchain> rustdoc --lib -- -Z unstable-options
+  --output-format json` per crate (a JSON file written beforehand is
+  read as it is). That builds dependencies and runs build scripts and
+  procedural macros: not static, unlike the other packages, but it is
+  what rustdoc needs.
+- As rustdoc's pages: items of private modules are documented where
+  re-exported (under that name); other re-exports are items of their
+  own (`re-export`) linking to what they re-export. Inherent methods
+  are members of their type; trait implementations (without the
+  synthetic auto-trait and blanket ones) and implementors are listed in
+  the docs. Signatures are written from rustdoc's types, paths by their
+  last segment, `where` clauses on lines of their own, long parameter
+  lists one per line.
+- **Doc comments:** rustdoc's `# Examples` / `# Panics` headings would
+  be sections of the generated page, so the framework got a docstring
+  style for them (`headings`): headings split the comment into titled
+  parts (`# Arguments` lists are parameters). Intra-doc links become
+  `rs:obj` references (via rustdoc's resolved `links`) to items any of
+  the plugin's crates document, so a re-export of another documented
+  crate links to its page; other crates' items link to their rustdoc
+  pages (`html_root_url`, the standard library's stable docs, or
+  docs.rs). Rust code blocks lose rustdoc's hidden `# ` lines.
+- The docs site documents `lsdocs-plugin-sdk` with `lsdocs-protocol` and
+  `lsdocs-doctree` (re-exported by it), under `api/rust`, with its own
+  target directory.
 - [x] **Python:** a Rust Python parser (ruff's) for modules and stub
       files, with type annotations and docstrings (`apidoc-python`).
 - [ ] Python: re-exports (`from ._native import Context` in a package's
