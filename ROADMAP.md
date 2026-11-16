@@ -69,7 +69,7 @@ lsdocs/
     apidoc-python/  apidoc-typescript/  apidoc-cpp/  apidoc-rust/
                                                             (planned, Phase 12)
   bindings/
-    plugin/python/  plugin/node/    the plugin SDK bindings (moved, Phase 10)
+    plugin/python/  plugin/node/    the plugin SDK bindings
     rst/python/     rst/node/       lsdocs-rst bindings     (planned, Phase 10)
   docs/  examples/  schema/  fixtures/  spec/  scripts/  tools/
 ```
@@ -87,16 +87,29 @@ than docutils is worth having on its own, and the bindings are also how
 Python and Node.js plugins (or Sphinx-like tools) can reuse it.
 
 ### 10a: Bindings layout
-- [ ] Move the plugin SDK bindings to `bindings/plugin/python` and
+- [x] Move the plugin SDK bindings to `bindings/plugin/python` and
       `bindings/plugin/node`; the rst bindings go to `bindings/rst/python`
       and `bindings/rst/node`. Each is its own package with its own tests.
-- [ ] Shared tooling: the uv workspace gains the new Python member; an npm
+- [x] Shared tooling: the uv workspace gains the new Python member; an npm
       workspace (or per-package installs) for the Node packages; `nur test
       python` / `nur test node` run every package (or take a package name);
       `nur gen node` handles each addon. Update AGENTS.md and
       `check-deps.nu` (a rule per bindings group).
-- [ ] Decide the library's public name (it is `lsdocs-rst` until then) for
+- [x] Decide the library's public name (it is `lsdocs-rst` until then) for
       the crate and both packages.
+
+Decisions:
+- The name stays **`lsdocs-rst`**: the crate `lsdocs-rst`, the PyPI
+  package `lsdocs-rst` (module `lsdocs_rst`) and the npm package
+  `@lsdocs/rst`, in the same namespace as `lsdocs-plugin` and
+  `@lsdocs/plugin`.
+- Binding crates are named after their package: `lsdocs-plugin-python`,
+  `lsdocs-plugin-node` (renamed from `lsdocs-python`, `lsdocs-node`),
+  `lsdocs-rst-python`, `lsdocs-rst-node`.
+- Node packages are installed one by one, each with its own lockfile, not
+  as an npm workspace: they share no JS dependencies worth hoisting, and
+  per-package installs keep each package publishable as it is. The `nur`
+  tasks list the packages (`PYTHON_PACKAGES`, `NODE_PACKAGES`).
 
 ### 10b: A public API worth binding
 - [ ] Settings: one `Settings` type for the docutils settings the parser
@@ -405,11 +418,11 @@ Things left open along the way, by area. The phases above may pick them up.
 |---|---|---|
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | before 1.0 |
 | Site-wide data shared once (e.g. navigation) instead of per page | open | when nav cost matters |
-| The rst library's public name | open | 10a |
 | How Sphinx add-ons hook into parsing | a directive crate registered by `parser-rst`, plus a transformer | 11a |
 | Rust API extraction: rustdoc JSON or `syn` | rustdoc JSON | 12c |
 | C/C++ extraction: libclang or tree-sitter | open | 12c |
 | Theme settings: `render-html` options or a `[theme]` table | open | 13a |
 | zensical templates: port to minijinja or render as they are | research first | 13c |
 
-Decided ones, with their reasons, are in [HISTORY.md](HISTORY.md).
+Decided ones, with their reasons, are in [HISTORY.md](HISTORY.md) (phases 0-9)
+or under their phase above.
