@@ -19,7 +19,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use lsdocs_protocol::doctree::Document;
 use lsdocs_protocol::{SiteInfo, msgpack};
@@ -94,26 +94,34 @@ impl Cache {
     fn mark(&self, key: &str) {
         self.used
             .lock()
-            .expect("not poisoned")
+            .unwrap_or_else(PoisonError::into_inner)
             .insert(key.to_owned());
     }
 
     /// Starts a build: resets which entries are used and the hit count.
     pub fn begin_build(&self) {
-        self.used.lock().expect("not poisoned").clear();
+        self.used
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clear();
         self.hits.store(0, Ordering::Relaxed);
     }
 
     /// The entry for `key`, if there is a readable one.
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Option<T> {
-        let remembered = self.memory.lock().expect("not poisoned").get(key).cloned();
+        let remembered = self
+            .memory
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(key)
+            .cloned();
         let bytes = match remembered {
             Some(bytes) => bytes,
             None => {
                 let bytes = Arc::new(std::fs::read(self.path(key)).ok()?);
                 self.memory
                     .lock()
-                    .expect("not poisoned")
+                    .unwrap_or_else(PoisonError::into_inner)
                     .insert(key.to_owned(), bytes.clone());
                 bytes
             }
@@ -134,7 +142,7 @@ impl Cache {
         let bytes = Arc::new(bytes);
         self.memory
             .lock()
-            .expect("not poisoned")
+            .unwrap_or_else(PoisonError::into_inner)
             .insert(key.to_owned(), bytes.clone());
         let result = (|| -> std::io::Result<()> {
             std::fs::create_dir_all(&self.dir)?;
@@ -155,10 +163,10 @@ impl Cache {
 
     /// Deletes the entries this build did not use, from memory and disk.
     pub fn prune(&self) {
-        let used = self.used.lock().expect("not poisoned");
+        let used = self.used.lock().unwrap_or_else(PoisonError::into_inner);
         self.memory
             .lock()
-            .expect("not poisoned")
+            .unwrap_or_else(PoisonError::into_inner)
             .retain(|key, _| used.contains(key));
         let Ok(entries) = std::fs::read_dir(&self.dir) else {
             return;

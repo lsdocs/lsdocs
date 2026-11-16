@@ -5,6 +5,8 @@
 //! output. Out-of-process plugins are the builtins served by
 //! `lsdocs plugin <name>`.
 
+#![allow(clippy::unwrap_used)]
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};

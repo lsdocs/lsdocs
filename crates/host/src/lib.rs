@@ -658,27 +658,15 @@ async fn run_pipeline(
     // Render, documents in parallel.
     let mut outputs: Vec<(String, Vec<u8>)> = Vec::new();
     if !documents.is_empty() {
-        let renderer = plugins
+        let (renderer, render) = plugins
             .iter()
-            .find(|p| {
-                p.capabilities
-                    .render
-                    .as_ref()
-                    .is_some_and(|r| !r.formats.is_empty())
+            .find_map(|p| {
+                let render = p.capabilities.render.as_ref()?;
+                (!render.formats.is_empty()).then_some((p, render))
             })
             .ok_or(HostError::NoRenderer)?;
-        let format = renderer
-            .capabilities
-            .render
-            .as_ref()
-            .expect("checked above")
-            .formats[0]
-            .clone();
-        let site = renderer
-            .capabilities
-            .render
-            .as_ref()
-            .is_some_and(|r| r.site);
+        let format = render.formats[0].clone();
+        let site = render.site;
         let results = in_parallel(documents, {
             let renderer = Arc::clone(renderer);
             let format = format.clone();

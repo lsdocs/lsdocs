@@ -167,12 +167,10 @@ fn init_logging(verbose: u8, trace_rpc: bool) {
             _ => "debug",
         };
         let mut filter = EnvFilter::new(level);
-        if trace_rpc {
-            filter = filter.add_directive(
-                format!("{}=trace", lsdocs_plugin_sdk::TRACE_TARGET)
-                    .parse()
-                    .expect("valid directive"),
-            );
+        if trace_rpc
+            && let Ok(directive) = format!("{}=trace", lsdocs_plugin_sdk::TRACE_TARGET).parse()
+        {
+            filter = filter.add_directive(directive);
         }
         filter
     });

@@ -3,6 +3,8 @@
 //! After an intended change to the output, update the snapshots with
 //! `nur snapshots` and review the diff.
 
+#![allow(clippy::unwrap_used)]
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

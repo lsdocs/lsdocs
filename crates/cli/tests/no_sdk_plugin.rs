@@ -3,6 +3,8 @@
 //! Building a site with it checks that the spec is enough to implement the
 //! protocol. Skipped when no Python is installed.
 
+#![allow(clippy::unwrap_used)]
+
 use std::path::PathBuf;
 use std::process::Command;
 

@@ -1,6 +1,8 @@
 //! The documentation site (`docs/`, built with lsdocs) builds without
 //! warnings, so broken links and malformed pages fail the tests.
 
+#![allow(clippy::unwrap_used)]
+
 use std::process::Command;
 
 const LSDOCS: &str = env!("CARGO_BIN_EXE_lsdocs");

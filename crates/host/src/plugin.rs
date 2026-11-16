@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Stdio;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -95,13 +95,22 @@ impl Events {
                 Some(pct) => tracing::debug!(plugin, "{} ({pct}%)", p.message),
                 None => tracing::debug!(plugin, "{}", p.message),
             },
-            Event::Diagnostics(d) => self.diagnostics.lock().expect("lock").extend(d.diagnostics),
+            Event::Diagnostics(d) => self
+                .diagnostics
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .extend(d.diagnostics),
         }
     }
 
     /// Takes the diagnostics reported so far.
     pub(crate) fn take_diagnostics(&self) -> Vec<Diagnostic> {
-        std::mem::take(&mut self.diagnostics.lock().expect("lock"))
+        std::mem::take(
+            &mut self
+                .diagnostics
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner),
+        )
     }
 }
 
@@ -201,8 +210,11 @@ impl PluginClient {
                     TransportKind::Stdio => {
                         cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
                         let mut child = spawn(&name, &mut cmd)?;
-                        let stdout = child.stdout.take().expect("piped");
-                        let stdin = child.stdin.take().expect("piped");
+                        let (Some(stdout), Some(stdin)) = (child.stdout.take(), child.stdin.take())
+                        else {
+                            let error = std::io::Error::other("no stdio pipes");
+                            return Err(HostError::launch(&name, error));
+                        };
                         (Transport::new(stdout, stdin), child)
                     }
                     TransportKind::Pipe => {
@@ -302,7 +314,7 @@ impl PluginClient {
     }
 
     pub async fn parse(&self, params: ParseParams) -> Result<ParseResult, HostError> {
-        let _permit = self.permits.acquire().await.expect("never closed");
+        let _permit = self.permits.acquire().await.ok();
         let source = params.source.clone();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
@@ -320,7 +332,7 @@ impl PluginClient {
         &self,
         params: TransformCollectParams,
     ) -> Result<TransformCollectResult, HostError> {
-        let _permit = self.permits.acquire().await.expect("never closed");
+        let _permit = self.permits.acquire().await.ok();
         let source = params.document.source.clone();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
@@ -340,7 +352,10 @@ impl PluginClient {
     pub async fn set_collected(&self, collected: Value) -> Result<(), HostError> {
         match &self.kind {
             Kind::InProcess { .. } => {
-                *self.collected.lock().expect("not poisoned") = Arc::new(collected);
+                *self
+                    .collected
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner) = Arc::new(collected);
                 Ok(())
             }
             Kind::Remote { peer, .. } => peer
@@ -353,13 +368,18 @@ impl PluginClient {
     /// Transforms one document. Collected data comes from
     /// [`PluginClient::set_collected`].
     pub async fn apply(&self, document: Document) -> Result<TransformApplyResult, HostError> {
-        let _permit = self.permits.acquire().await.expect("never closed");
+        let _permit = self.permits.acquire().await.ok();
         let source = document.source.clone();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
                 // Copy the `Arc` under the lock and the data outside it, so
                 // parallel applies do not queue on the lock.
-                let shared = Arc::clone(&self.collected.lock().expect("not poisoned"));
+                let shared = Arc::clone(
+                    &self
+                        .collected
+                        .lock()
+                        .unwrap_or_else(PoisonError::into_inner),
+                );
                 let collected = (*shared).clone();
                 let params = TransformApplyParams {
                     document,
@@ -381,7 +401,7 @@ impl PluginClient {
     }
 
     pub async fn render(&self, params: RenderParams) -> Result<RenderResult, HostError> {
-        let _permit = self.permits.acquire().await.expect("never closed");
+        let _permit = self.permits.acquire().await.ok();
         let source = params.document.source.clone();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
@@ -399,7 +419,7 @@ impl PluginClient {
         &self,
         params: RenderSiteParams,
     ) -> Result<RenderSiteResult, HostError> {
-        let _permit = self.permits.acquire().await.expect("never closed");
+        let _permit = self.permits.acquire().await.ok();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => plugin
                 .render_site(params, ctx)

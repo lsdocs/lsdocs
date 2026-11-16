@@ -2,6 +2,8 @@
 //! script, and edits, new files and deleted files are rebuilt and announced
 //! on the reload stream.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};

@@ -30,6 +30,9 @@ deviations here as you go, under the phase they belong to.
   reference implementation (docutils, Sphinx, the zensical theme), it is
   tested against that implementation's output, not against a reading of its
   docs.
+- **Errors, not panics.** A bad document, plugin or file is a diagnostic or
+  an error, never a crash. Clippy denies `unwrap`, `expect` and `panic!`
+  outside tests (decided after Phase 9; see AGENTS.md).
 
 ## Where things stand
 
