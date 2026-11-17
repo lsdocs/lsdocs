@@ -89,6 +89,10 @@ enum Commands {
 /// The first-party plugins, available as `builtin = "<name>"`.
 fn builtins() -> Builtins {
     let builtins = Builtins::new();
+    #[cfg(feature = "apidoc-clang")]
+    let builtins = builtins
+        .with("apidoc-c", lsdocs_apidoc_clang::plugin_c)
+        .with("apidoc-cpp", lsdocs_apidoc_clang::plugin_cpp);
     #[cfg(feature = "apidoc-python")]
     let builtins = builtins.with("apidoc-python", lsdocs_apidoc_python::plugin);
     #[cfg(feature = "apidoc-rust")]

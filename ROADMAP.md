@@ -62,14 +62,13 @@ lsdocs/
   crates/
     doctree/  config/  protocol/  rpc/  plugin-sdk/  sdk-dynamic/  host/  cli/
     rst/            lsdocs-rst: the reStructuredText library
-    apidoc/         API documentation framework            (planned, Phase 12)
+    apidoc/         API documentation framework (and apidoc-plugin/)
   plugins/
     parser-markdown/  parser-rst/
     transform-toc/  transform-links/  transform-nav/  transform-highlight/
     render-html/    themes: default; zensical              (planned, Phase 13)
-    sphinx-addons/  Sphinx's directives and roles          (planned, Phase 11)
-    apidoc-python/  apidoc-typescript/  apidoc-cpp/  apidoc-rust/
-                                                            (planned, Phase 12)
+    sphinx-addons/  Sphinx's directives and roles
+    apidoc-python/  apidoc-typescript/  apidoc-clang/  apidoc-rust/
   bindings/
     plugin/python/  plugin/node/    the plugin SDK bindings
     rst/python/     rst/node/       lsdocs-rst bindings
@@ -399,7 +398,8 @@ Decisions:
       field lists, Doxygen / Javadoc / TSDoc tags, split out by the
       framework; their text (Markdown, reStructuredText) parsed into the
       document tree by the site's parsers (`site/parse`).
-- [ ] rustdoc's intra-doc links (with the Rust package).
+- [x] rustdoc's intra-doc links (in `apidoc-rust`, from rustdoc's
+      resolved `links`).
 - [x] Cross-references: qualified names to anchors, across pages, in the
       scope a reference is written in.
 - [ ] Inventory export and import (the `ext-ref` TODO).
@@ -549,15 +549,59 @@ Decisions (TypeScript):
 - The docs site documents `@lsdocs/plugin` and `@lsdocs/rst` from their
   `.d.ts`, under `api/typescript` (Python's moved to `api/python`, with
   a hand-written `api/` index).
-- [ ] **C/C++:** libclang (the user's choice: nothing else parses the C
-      family well), loaded at run time (`clang-sys`'s `runtime` feature),
-      so building lsdocs needs no LLVM; using the plugin needs libclang
-      installed, which its README documents on Windows (winget), macOS
-      (Homebrew) and Linux (apt, dnf, pacman). Doxygen comments.
+- [x] **C/C++:** libclang (`apidoc-clang`: the `apidoc-c` and
+      `apidoc-cpp` builtins), with Doxygen comments.
+- [ ] C/C++: C++20 concepts are not documented (the `clang` crate knows
+      libclang 10's cursor kinds; newer ones are `NotImplemented`).
+      Overloads are one item: every signature, but the first documented
+      overload's comment only. Template specializations are left out.
+      Types in signatures are text, not links.
+- [ ] Objective-C (and Objective-C++): libclang parses them too; an
+      `apidoc-objc` with an `objc` domain (classes, protocols,
+      categories, methods by selector) would fit the same crate.
+
+Decisions (C/C++):
+- **libclang** (the user's call, over tree-sitter: nothing else parses
+  the C family as a compiler does), through the `clang` crate with
+  `clang-sys`'s `runtime` feature: loaded when the plugin runs, so
+  building lsdocs needs no LLVM, and the crate needs only the
+  workspace's MSRV. Using it needs libclang 10 or later; the plugin's
+  README and the docs say how to install it on Windows (winget), macOS
+  (Command Line Tools, Homebrew) and Linux (apt, dnf, pacman, zypper,
+  apk), and `LIBCLANG_PATH` for anything else.
+- libclang allows one `Clang` per process at a time (a mutex), and
+  dropping it unloads the library, after which LLVM's exit handlers
+  crashed the process on Windows: the plugin keeps the library loaded
+  until the process ends.
+- One crate, two plugins: C and C++ differ in their domain (Sphinx's `c`
+  and `cpp`, with their directive and role names), the separator (`.`,
+  `::`) and the default arguments (`-x c -std=c17`, `-x c++
+  -std=c++20`). Clang's AST also covers Objective-C, CUDA and OpenCL;
+  nothing outside the C family.
+- Each header is parsed on its own and documents what it declares
+  itself: a module per header (`#include "..."` as its signature, its
+  `@file` comment as its docs), namespaces as pages. A directory entry is
+  also an include directory. Signatures are the declarations as
+  written, from libclang's tokens: bodies, initializer lists and comments
+  dropped, whitespace collapsed, a template head on its own line, long
+  parameter lists one per line.
+- C's idioms: a typedef of an anonymous struct or enum is that struct
+  (clang names it after the typedef); an opaque `typedef struct x x;` is
+  a type alias; an anonymous enum's enumerators are constants; include
+  guards are not macros. libclang does not attach comments to macros,
+  so a macro's is the doc comment above it.
+- Doxygen: comment markers stripped, `\code` blocks fenced, `\c` / `\p` /
+  `\b` / `\e` as Markdown, `\ref x` and `#x` as `obj` references; the
+  sections (`@param`, `\return`, ...) are the framework's tags style. An
+  override without a comment takes the overridden method's.
+- The docs site documents a sample library, `examples/clang-sample` (a C
+  header and a C++ one, without the C++ standard library so that
+  libclang needs nothing from the system), which the tests use too.
 
 **Exit:** the lsdocs docs site documents `lsdocs-plugin-sdk` (Rust), the
 Python and Node.js bindings, and a C/C++ sample, with links between the
-generated pages and the guides.
+generated pages and the guides. **Met** with 12c's four packages; the
+unchecked items above stay open as follow-ups.
 
 ## Phase 13: HTML themes
 
