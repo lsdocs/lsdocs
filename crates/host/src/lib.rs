@@ -38,9 +38,9 @@ use std::sync::Arc;
 use lsdocs_config::Config;
 use lsdocs_protocol::doctree::{Document, Value};
 use lsdocs_protocol::{
-    Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ParseResult, ProgramInfo,
-    RenderParams, RenderSiteParams, RenderedPage, Severity, SiteInfo, Syntax,
-    TransformCollectParams,
+    Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ParseResult,
+    ParseTransformEachParams, ProgramInfo, RenderParams, RenderTransformAllParams, RenderedPage,
+    Severity, SiteInfo, Syntax,
 };
 
 mod cache;
@@ -609,7 +609,7 @@ async fn run_pipeline(
             .capabilities
             .transform
             .as_ref()
-            .is_some_and(|t| t.collect);
+            .is_some_and(|t| t.each);
         let mut selected: Vec<usize> = (0..documents.len())
             .filter(|&i| plugin.wants_document(&documents[i]))
             .collect();
@@ -630,7 +630,7 @@ async fn run_pipeline(
                         if let Some(result) = cache::get(&cache, &key) {
                             return Ok((source, result));
                         }
-                        let result = plugin.collect(TransformCollectParams { document }).await?;
+                        let result = plugin.read(ParseTransformEachParams { document }).await?;
                         cache::put(&cache, &key, &result, &result.dependencies);
                         Ok((source, result))
                     }
@@ -733,7 +733,7 @@ async fn run_pipeline(
             })
             .ok_or(HostError::NoRenderer)?;
         let format = render.formats[0].clone();
-        let site = render.site;
+        let site = render.all;
         let results = in_parallel(documents, {
             let renderer = Arc::clone(renderer);
             let format = format.clone();
@@ -785,7 +785,7 @@ async fn run_pipeline(
         }
         if site {
             let result = renderer
-                .render_site(RenderSiteParams {
+                .render_all(RenderTransformAllParams {
                     format: format.clone(),
                     pages,
                 })

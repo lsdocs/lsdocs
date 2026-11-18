@@ -12,11 +12,11 @@ use lsdocs_plugin_sdk::{BoxFuture, Context, Event, EventSink, Plugin};
 use lsdocs_protocol::doctree::Document;
 use lsdocs_protocol::doctree::Value;
 use lsdocs_protocol::{
-    Capabilities, Diagnostic, InitializeParams, LogLevel, PROTOCOL_VERSION, ParseParams,
-    ParseResult, RenderParams, RenderResult, RenderSiteParams, RenderSiteResult, SiteParseParams,
-    Syntax, TransformApplyParams, TransformApplyResult, TransformCollectParams,
-    TransformCollectResult, TransformCollectedParams, TransformCollectedResult, notification,
-    request,
+    Capabilities, Diagnostic, HostParseParams, InitializeParams, LogLevel, PROTOCOL_VERSION,
+    ParseParams, ParseResult, ParseTransformAllParams, ParseTransformAllResult,
+    ParseTransformEachParams, ParseTransformEachResult, RenderParams, RenderResult,
+    RenderTransformAllParams, RenderTransformAllResult, RenderTransformEachParams,
+    RenderTransformEachResult, Syntax, notification, request,
 };
 use lsdocs_rpc::transport::{Transport, pipe};
 use lsdocs_rpc::{Options, Peer, Router};
@@ -81,11 +81,11 @@ impl Builtins {
 #[derive(Clone, Default)]
 pub(crate) struct Events {
     diagnostics: Arc<Mutex<Vec<Diagnostic>>>,
-    /// The running plugins that parse, for `site/parse`.
+    /// The running plugins that parse, for `host/parse`.
     parsers: Arc<Mutex<Arc<SiteParsers>>>,
 }
 
-/// The parsers `site/parse` can use, and the syntax they get. Weak, so the
+/// The parsers `host/parse` can use, and the syntax they get. Weak, so the
 /// plugins (which hold [`Events`]) don't keep themselves alive.
 #[derive(Default)]
 struct SiteParsers {
@@ -115,7 +115,7 @@ impl Events {
         }
     }
 
-    /// Makes `plugins` the ones `site/parse` uses.
+    /// Makes `plugins` the ones `host/parse` uses.
     pub(crate) fn set_plugins(&self, plugins: &[Arc<PluginClient>]) {
         let mut syntax = Syntax::default();
         for plugin in plugins {
@@ -132,9 +132,9 @@ impl Events {
         *self.parsers.lock().unwrap_or_else(PoisonError::into_inner) = Arc::new(parsers);
     }
 
-    /// Answers `site/parse`: parses with the first parser taking the
+    /// Answers `host/parse`: parses with the first parser taking the
     /// extension.
-    pub(crate) async fn site_parse(&self, params: SiteParseParams) -> Result<ParseResult, String> {
+    pub(crate) async fn site_parse(&self, params: HostParseParams) -> Result<ParseResult, String> {
         let parsers = Arc::clone(&self.parsers.lock().unwrap_or_else(PoisonError::into_inner));
         let parser = parsers
             .plugins
@@ -181,7 +181,7 @@ impl EventSink for InProcessSink {
         Box::pin(async {})
     }
 
-    fn parse(&self, params: SiteParseParams) -> BoxFuture<'_, Result<ParseResult, String>> {
+    fn parse(&self, params: HostParseParams) -> BoxFuture<'_, Result<ParseResult, String>> {
         Box::pin(self.events.site_parse(params))
     }
 }
@@ -387,31 +387,31 @@ impl PluginClient {
         .map_err(|message| self.phase_error("parse", &source, message))
     }
 
-    pub async fn collect(
+    pub async fn read(
         &self,
-        params: TransformCollectParams,
-    ) -> Result<TransformCollectResult, HostError> {
+        params: ParseTransformEachParams,
+    ) -> Result<ParseTransformEachResult, HostError> {
         let _permit = self.permits.acquire().await.ok();
         let source = params.document.source.clone();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
-                plugin.collect(params, ctx).await.map_err(|e| e.to_string())
+                plugin.read(params, ctx).await.map_err(|e| e.to_string())
             }
             Kind::Remote { peer, .. } => peer
-                .request::<request::TransformCollect>(&params)
+                .request::<request::ParseTransformEach>(&params)
                 .await
                 .map_err(|e| e.to_string()),
         }
-        .map_err(|message| self.phase_error("transform/collect", &source, message))
+        .map_err(|message| self.phase_error("parse/transform/each", &source, message))
     }
 
     /// Hands the plugin what it collected from every document, once before
-    /// the apply pass: sent with `transform/collected`, or kept here for an
+    /// the apply pass: sent with `parse/transform/all`, or kept here for an
     /// in-process plugin.
     pub async fn set_collected(
         &self,
         collected: Value,
-    ) -> Result<TransformCollectedResult, HostError> {
+    ) -> Result<ParseTransformAllResult, HostError> {
         match &self.kind {
             Kind::InProcess { plugin, ctx } => {
                 let shared = Arc::new(collected);
@@ -420,21 +420,21 @@ impl PluginClient {
                     .lock()
                     .unwrap_or_else(PoisonError::into_inner) = Arc::clone(&shared);
                 plugin
-                    .generate(&shared, ctx)
+                    .conclude(&shared, ctx)
                     .await
                     .map_err(|e| e.to_string())
             }
             Kind::Remote { peer, .. } => peer
-                .request::<request::TransformCollected>(&TransformCollectedParams { collected })
+                .request::<request::ParseTransformAll>(&ParseTransformAllParams { collected })
                 .await
                 .map_err(|e| e.to_string()),
         }
-        .map_err(|message| self.phase_error("transform/collected", "the site", message))
+        .map_err(|message| self.phase_error("parse/transform/all", "the site", message))
     }
 
     /// Transforms one document. Collected data comes from
     /// [`PluginClient::set_collected`].
-    pub async fn apply(&self, document: Document) -> Result<TransformApplyResult, HostError> {
+    pub async fn apply(&self, document: Document) -> Result<RenderTransformEachResult, HostError> {
         let _permit = self.permits.acquire().await.ok();
         let source = document.source.clone();
         match &self.kind {
@@ -448,23 +448,23 @@ impl PluginClient {
                         .unwrap_or_else(PoisonError::into_inner),
                 );
                 let collected = (*shared).clone();
-                let params = TransformApplyParams {
+                let params = RenderTransformEachParams {
                     document,
                     collected,
                 };
                 plugin.apply(params, ctx).await.map_err(|e| e.to_string())
             }
             Kind::Remote { peer, .. } => {
-                let params = TransformApplyParams {
+                let params = RenderTransformEachParams {
                     document,
                     collected: Value::Null,
                 };
-                peer.request::<request::TransformApply>(&params)
+                peer.request::<request::RenderTransformEach>(&params)
                     .await
                     .map_err(|e| e.to_string())
             }
         }
-        .map_err(|message| self.phase_error("transform/apply", &source, message))
+        .map_err(|message| self.phase_error("render/transform/each", &source, message))
     }
 
     pub async fn render(&self, params: RenderParams) -> Result<RenderResult, HostError> {
@@ -482,22 +482,22 @@ impl PluginClient {
         .map_err(|message| self.phase_error("render", &source, message))
     }
 
-    pub async fn render_site(
+    pub async fn render_all(
         &self,
-        params: RenderSiteParams,
-    ) -> Result<RenderSiteResult, HostError> {
+        params: RenderTransformAllParams,
+    ) -> Result<RenderTransformAllResult, HostError> {
         let _permit = self.permits.acquire().await.ok();
         match &self.kind {
             Kind::InProcess { plugin, ctx } => plugin
-                .render_site(params, ctx)
+                .render_all(params, ctx)
                 .await
                 .map_err(|e| e.to_string()),
             Kind::Remote { peer, .. } => peer
-                .request::<request::RenderSite>(&params)
+                .request::<request::RenderTransformAll>(&params)
                 .await
                 .map_err(|e| e.to_string()),
         }
-        .map_err(|message| self.phase_error("render/site", "the site", message))
+        .map_err(|message| self.phase_error("render/transform/all", "the site", message))
     }
 
     /// Stops the plugin: `shutdown`, `exit`, then waits for the process,
@@ -612,7 +612,7 @@ fn router(plugin: &str, events: &Events) -> Router {
     let (diag_name, diag_events) = (plugin.to_owned(), events.clone());
     let parse_events = events.clone();
     Router::new()
-        .request::<request::SiteParse, _, _>(move |params, _| {
+        .request::<request::HostParse, _, _>(move |params, _| {
             let events = parse_events.clone();
             async move {
                 events

@@ -168,7 +168,7 @@ fn in_process_and_out_of_process_builds_match() {
         index.contains("<a href=\"guide/intro.html\">Intro</a>"),
         "{index}"
     );
-    // Navigation, and the sitemap from `render/site`.
+    // Navigation, and the sitemap from `render/transform/all`.
     assert!(
         index.contains("<a href=\"index.html\" aria-current=\"page\">Home</a>"),
         "{index}"
@@ -386,7 +386,7 @@ fn included_files_invalidate_cached_results() {
 
 /// A site documenting a Python package, its plugins in-process or out of
 /// process: the API plugin asks the host to parse docstrings
-/// (`site/parse`), which must work across a connection too.
+/// (`host/parse`), which must work across a connection too.
 fn api_site(transport: Option<&str>) -> BTreeMap<String, Vec<u8>> {
     let site = temp_dir(&format!("api-{}", transport.unwrap_or("builtin")));
     write(
