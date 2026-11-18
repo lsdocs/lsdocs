@@ -798,8 +798,9 @@ those lists current. To fix:
       `target-notes`.
 
 ### `parser-rst`
-- [ ] Take docutils settings from the plugin's options (a `settings`
-      table deserialized into `lsdocs_rst::Settings`).
+- [x] Take docutils settings from `docutils.conf` (Phase 13).
+- [ ] Its `docutils.conf` reader's known differences from docutils are
+      listed in `plugins/parser-rst/README.md`; keep that list current.
 - [ ] Inline semantics are lost: `subscript`, `superscript`,
       `abbreviation`, `acronym` and `inline` with classes become their
       text; `title_reference` becomes emphasis. The inline `custom`
