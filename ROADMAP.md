@@ -630,11 +630,38 @@ and `Renderer::RENDERS_ALL`, `render_all`; Python `@plugin.read`,
 published. "site" now means only the project being built (`SiteInfo`,
 `[site]`).
 
-Next (decided, not built): plugin settings move out of `lsdocs.toml`'s
-`options` (removed) into `.config/<vendor>/<plugin instance>/` next to
-`lsdocs.toml`, which each plugin reads itself, in any format (parser-rst
-a `docutils.conf`); the host passes the paths at `initialize`, digests
-the directory into the plugin's cache keys, and `serve` watches it.
+### Plugin settings in `.config/`
+Done (design in
+`docs/superpowers/specs/2026-11-18-phase-13-plugin-config-design.md`):
+`options` left `lsdocs.toml` (an `options` key is an error saying where
+settings went). Each plugin reads its own files under `.config/` next
+to `lsdocs.toml`, in any format; the host only says where `.config/` is
+and the plugin's instance name (`InitializeParams.config`), and lays
+down no layout inside it (recommended: `<vendor>/<name>/`).
+
+Decisions:
+- **The plugin reports what it read** (`InitializeResult.config_files`,
+  missing files included); the host digests those into its cache keys.
+  The host never needs a vendor.
+- **Settings are read once, at `initialize`.** `lsdocs serve` restarts
+  the plugins when anything under `.config/` changes (its watcher skips
+  hidden directories, so `.config/` is watched on its own).
+- **Rust SDK:** a loader registered with `Plugin::settings` runs at
+  `initialize`; `Setup` (the params, the settings, the files) feeds the
+  syntax and cache-key closures, and `Context::settings()` /
+  `Context::config()`. `lsdocs_plugin_sdk::config` reads TOML; lsdocs'
+  plugins use `.config/lsdocs/<name>/settings.toml` and reject unknown
+  keys (`settings_toml_keys`, `settings_toml_as`; apidoc packages list
+  theirs with `Language::settings`).
+- **Python and Node** name their files (`config_files` / `configFiles`,
+  with `{name}`); the Rust side reads them as text at `initialize` (a
+  callback would need JavaScript to run synchronously there), and
+  `ctx.settings` maps each to its text for the plugin to parse.
+- **parser-rst** reads docutils' `docutils.conf` (INI): the settings
+  lsdocs-rst implements from `[general]`, `[parsers]` and
+  `[restructuredtext parser]`, and `file_insertion_enabled` (was the
+  `file_access` option); other sections are skipped, and docutils
+  settings it does not implement are a warning, once.
 
 ### 13a: The settings scheme
 - [ ] A theme is a directory: templates (minijinja, with `extends` and
@@ -643,9 +670,10 @@ the directory into the plugin's cache keys, and `serve` watches it.
       data it needs.
 - [ ] Site configuration: the theme to use (a built-in name or a
       directory), its settings, and overrides (a directory whose templates
-      and assets replace or extend the theme's, block by block). Decide
-      whether this lives in `render-html`'s options or in `[site]` / a
-      `[theme]` table; `site.theme` is already reserved.
+      and assets replace or extend the theme's, block by block). Its
+      settings live in render-html's `.config/` directory (a theme's own
+      settings file there); whether `site.theme` (reserved) names the
+      theme is still open.
 - [ ] Settings every theme should take: palette (light, dark or following
       the system; primary and accent colors), fonts, logo and favicon,
       language and translatable labels, extra CSS and JS, social links,
@@ -827,7 +855,7 @@ those lists current. To fix:
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | before 1.0 |
 | Site-wide data shared once (e.g. navigation) instead of per page | open | when nav cost matters |
 | How Sphinx add-ons hook into parsing | declared syntax: parsers make neutral nodes, a transformer gives them meaning | 11a |
-| Theme settings: `render-html` options or a `[theme]` table | open | 13a |
+| Naming the theme: `site.theme` or render-html's settings | open (settings themselves: render-html's `.config/` directory) | 13a |
 | zensical templates: port to minijinja or render as they are | research first | 13c |
 
 Decided ones, with their reasons, are in [HISTORY.md](HISTORY.md) (phases 0-9)
