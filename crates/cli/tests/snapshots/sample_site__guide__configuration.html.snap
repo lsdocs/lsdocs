@@ -143,7 +143,7 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <p>Escaping works: 1 &lt; 2 &amp;&amp; &quot;quotes&quot; stay safe.</p>
 <div class="footnote" id="fn-strict">
 <p class="footnote-label"><a href="#fnref-strict">strict</a></p>
-<p>Plugin <code>options</code> tables are the exception: plugins read them.</p>
+<p>Plugin settings are the plugins&#39; own files, under <code>.config/</code>.</p>
 </div>
 </section>
 </section>
