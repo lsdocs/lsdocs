@@ -312,7 +312,7 @@ Decisions:
   page (no section numbers), and prefixes their captions ("Fig. 1 ").
   Numbered equations get `\tag{n}`, which KaTeX and MathJax draw.
 - **Generated documents** (from 12a, needed for the index page; breaking
-  the release-candidate protocol is fine): `transform/collected` now
+  the release-candidate protocol is fine): `parse/transform/all` now
   returns documents the plugin generates from what it collected
   (`Transformer::generate` in the Rust SDK). The host checks their paths
   are free, normalizes them, and they go through the plugin's apply
@@ -358,7 +358,7 @@ C/C++ and Rust. A language-neutral framework does the common work; each
 language is its own package that depends on it and only extracts.
 
 ### 12a: Platform additions
-- [x] **Generated documents:** done in Phase 11 (`transform/collected`
+- [x] **Generated documents:** done in Phase 11 (`parse/transform/all`
       returns them; see 11b's decisions). Revisit if a generator needs no
       collect pass.
 - [ ] Generated documents from the Python and Node.js plugin SDKs (only
@@ -367,7 +367,7 @@ language is its own package that depends on it and only extracts.
       depends on (source files read, included files), so the cache and
       `lsdocs serve` invalidate exactly; this replaces turning caching off.
 - [x] **Parsing through the host:** a plugin asks the host to parse a piece
-      of text with the parser of a file extension (`site/parse`), so doc
+      of text with the parser of a file extension (`host/parse`), so doc
       comments in Markdown or reStructuredText become document nodes
       without the framework depending on any parser.
 
@@ -380,7 +380,7 @@ Decisions:
   them besides the site directory. `parser-rst` (`include`, `:file:`)
   and `sphinx-addons` (`literalinclude`) report the files they read and
   are cached again with `file_access` on.
-- `site/parse` is the first plugin -> host request. The host answers it
+- `host/parse` is the first plugin -> host request. The host answers it
   with the first parser taking the extension, with the site's syntax
   extensions, without normalizing. In the Rust SDK it is
   `Context::parse`; in-process plugins reach the host through their
@@ -397,7 +397,7 @@ Decisions:
 - [x] Doc comment formats: Google and NumPy docstring sections, Sphinx
       field lists, Doxygen / Javadoc / TSDoc tags, split out by the
       framework; their text (Markdown, reStructuredText) parsed into the
-      document tree by the site's parsers (`site/parse`).
+      document tree by the site's parsers (`host/parse`).
 - [x] rustdoc's intra-doc links (in `apidoc-rust`, from rustdoc's
       resolved `links`).
 - [x] Cross-references: qualified names to anchors, across pages, in the
@@ -427,7 +427,7 @@ Decisions:
   build on: they implement `Language` (domain, extraction, signature
   format and reading, the domain's object directives and roles) and get
   a plugin from `apidoc_plugin::plugin`.
-- **Doc comment markup goes through the site's parsers** (`site/parse`,
+- **Doc comment markup goes through the site's parsers** (`host/parse`,
   12a): the framework splits the docstring sections, and each piece is
   parsed by the parser of the language's doc format (`md` or `rst`),
   with the site's syntax extensions, so roles in docstrings work.
@@ -443,7 +443,7 @@ Decisions:
   the modules. Hand-placed items (`auto`, object directives) are
   `custom:api-item` blocks without headings, so they don't change the
   page's sections.
-- The pages come from `transform/collected` (11b), so extraction runs
+- The pages come from `parse/transform/all` (11b), so extraction runs
   once per build; its files are the result's dependencies. Apply results
   depend on the generated pages too (the host's apply cache key now
   covers generated documents), since references resolve against them.
@@ -609,6 +609,33 @@ unchecked items above stay open as follow-ups.
 variant, with the [zensical theme](https://github.com/zensical/ui) as the
 flagship. Today's default theme stays as the simple built-in one.
 
+### Protocol names
+Decided (the user's names; design in
+`docs/superpowers/specs/2026-11-18-phase-13-protocol-renames-design.md`):
+the pipeline's hooks are named by phase and scope, `each` per document,
+`all` once.
+
+| Method | Was |
+|---|---|
+| `parse/transform/each` | `transform/collect` |
+| `parse/transform/all` | `transform/collected` |
+| `render/transform/each` | `transform/apply` |
+| `render/transform/all` | `render/site` |
+| `host/parse` | `site/parse` |
+
+Capabilities: `transform.each` (was `collect`), `render.all` (was
+`site`). SDKs: Rust `Transformer::READS`, `read`, `conclude`, `apply`
+and `Renderer::RENDERS_ALL`, `render_all`; Python `@plugin.read`,
+`@plugin.render_all`; Node `read`, `renderAll`. No aliases: nothing is
+published. "site" now means only the project being built (`SiteInfo`,
+`[site]`).
+
+Next (decided, not built): plugin settings move out of `lsdocs.toml`'s
+`options` (removed) into `.config/<vendor>/<plugin instance>/` next to
+`lsdocs.toml`, which each plugin reads itself, in any format (parser-rst
+a `docutils.conf`); the host passes the paths at `initialize`, digests
+the directory into the plugin's cache keys, and `serve` watches it.
+
 ### 13a: The settings scheme
 - [ ] A theme is a directory: templates (minijinja, with `extends` and
       blocks), partials, static assets, and a manifest declaring its
@@ -630,7 +657,7 @@ flagship. Today's default theme stays as the simple built-in one.
 - [ ] The table of contents as data for templates (a sidebar), not only
       inserted into the content: `transform-toc` writes it to metadata as
       well, or the renderer builds it.
-- [ ] Search: an index written at `render/site` (pages, sections, text), and
+- [ ] Search: an index written at `render/transform/all` (pages, sections, text), and
       a client-side search the theme can use.
 - [ ] Content components themes style: content tabs, buttons, icons and
       emoji, code block titles, copy buttons, highlighted lines. Each needs

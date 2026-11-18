@@ -82,13 +82,13 @@ impl Builtins {
 pub(crate) struct Events {
     diagnostics: Arc<Mutex<Vec<Diagnostic>>>,
     /// The running plugins that parse, for `host/parse`.
-    parsers: Arc<Mutex<Arc<SiteParsers>>>,
+    parsers: Arc<Mutex<Arc<HostParsers>>>,
 }
 
 /// The parsers `host/parse` can use, and the syntax they get. Weak, so the
 /// plugins (which hold [`Events`]) don't keep themselves alive.
 #[derive(Default)]
-struct SiteParsers {
+struct HostParsers {
     plugins: Vec<Weak<PluginClient>>,
     syntax: Syntax,
 }
@@ -121,7 +121,7 @@ impl Events {
         for plugin in plugins {
             syntax.merge(&plugin.capabilities.syntax);
         }
-        let parsers = SiteParsers {
+        let parsers = HostParsers {
             plugins: plugins
                 .iter()
                 .filter(|p| p.capabilities.parse.is_some())
