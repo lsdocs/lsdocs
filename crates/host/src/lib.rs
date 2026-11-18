@@ -38,7 +38,7 @@ use std::sync::Arc;
 use lsdocs_config::Config;
 use lsdocs_protocol::doctree::{Document, Value};
 use lsdocs_protocol::{
-    Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ParseResult,
+    ConfigInfo, Diagnostic, InitializeParams, PROTOCOL_VERSION, ParseParams, ParseResult,
     ParseTransformEachParams, ProgramInfo, RenderParams, RenderTransformAllParams, RenderedPage,
     Severity, SiteInfo, Syntax,
 };
@@ -456,8 +456,19 @@ fn initialize_params(config: &Config, root: &Path, files: Vec<String>) -> Initia
                 .map(|p| p.to_string_lossy().into_owned()),
             files,
         },
-        options: Value::Null,
+        config: ConfigInfo {
+            dir: std::path::absolute(config_dir(root))
+                .ok()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            name: String::new(),
+        },
     }
+}
+
+/// Where plugins' settings are: `.config/` in the site directory.
+pub fn config_dir(root: &Path) -> std::path::PathBuf {
+    root.join(".config")
 }
 
 /// Starts every configured plugin; if one fails, stops those started.

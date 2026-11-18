@@ -7,7 +7,7 @@
 //!
 //! Only plugins that declare a cache key in their capabilities
 //! (`Capabilities::cache`) are cached. A result's key covers the cache
-//! format, the lsdocs version, the plugin's name, version, options and
+//! format, the lsdocs version, the plugin's name, version, settings files and
 //! cache key, the site settings (but not the file list), the phase, and the
 //! request's input. Entries are MessagePack files named by their key in
 //! `.lsdocs-cache/` at the site root. After a build, entries it did not use
@@ -74,14 +74,13 @@ impl Cache {
     /// `parts`, or `None` if the plugin may not be cached.
     pub fn key(&self, plugin: &PluginClient, phase: &str, parts: &[&[u8]]) -> Option<String> {
         let plugin_key = plugin.capabilities.cache.as_deref()?;
-        let options = serde_json::to_vec(&plugin.options).unwrap_or_default();
         let mut hasher = blake3::Hasher::new();
         let fields: [&[u8]; 8] = [
             FORMAT.as_bytes(),
             env!("CARGO_PKG_VERSION").as_bytes(),
             plugin.plugin_name.as_bytes(),
             plugin.version.as_bytes(),
-            &options,
+            &plugin.config_digest,
             plugin_key.as_bytes(),
             &self.site,
             phase.as_bytes(),

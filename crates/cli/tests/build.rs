@@ -332,6 +332,46 @@ fn a_crashing_plugin_fails_the_build_cleanly() {
 }
 
 #[test]
+fn config_file_changes_invalidate_cached_results() {
+    let site = temp_dir("config");
+    write(&site.join("docs/page.md"), "# Page\n\n## One\n\n### Two\n");
+    let config_path = site.join("lsdocs.toml");
+    write(
+        &config_path,
+        "[[plugins]]\nname = \"markdown\"\nbuiltin = \"parser-markdown\"\n\n\
+         [[plugins]]\nname = \"toc\"\nbuiltin = \"transform-toc\"\n\n\
+         [[plugins]]\nname = \"html\"\nbuiltin = \"render-html\"\n",
+    );
+    let config_arg = config_path.to_string_lossy().into_owned();
+    let build = || {
+        let output = lsdocs(&["build", "--config", config_arg.as_str()]);
+        assert!(output.status.success(), "{}", stderr(&output));
+        std::fs::read_to_string(site.join("site/page.html")).unwrap()
+    };
+    // The toc lists `Two` (depth 3, the default): a link besides the
+    // heading's own anchor.
+    let toc = |page: &str| page.matches("href=\"#two\"").count() == 2;
+    assert!(toc(&build()));
+    // A settings file appearing is a change of settings.
+    let settings = site.join(".config/lsdocs/toc/settings.toml");
+    write(&settings, "depth = 2\n");
+    assert!(!toc(&build()));
+    // And so is editing it.
+    write(&settings, "depth = 3\n");
+    assert!(toc(&build()));
+    // An unknown setting fails the build, naming the file.
+    write(&settings, "detph = 2\n");
+    let output = lsdocs(&["build", "--config", config_arg.as_str()]);
+    let log = stderr(&output);
+    let _ = std::fs::remove_dir_all(&site);
+    assert!(!output.status.success());
+    assert!(
+        log.contains("settings.toml") && log.contains("`detph`"),
+        "{log}"
+    );
+}
+
+#[test]
 fn included_files_invalidate_cached_results() {
     let site = temp_dir("deps");
     let docs = site.join("docs");
@@ -397,19 +437,19 @@ fn api_site(transport: Option<&str>) -> BTreeMap<String, Vec<u8>> {
         &site.join("docs/index.md"),
         "# Home\n\nCall {py:func}`pkg.run`.\n",
     );
+    write(
+        &site.join(".config/lsdocs/python/settings.toml"),
+        "paths = [\"src/pkg\"]\n",
+    );
     let mut config = String::new();
-    for (name, builtin, options) in [
-        ("markdown", "parser-markdown", ""),
-        ("rst", "parser-rst", ""),
-        (
-            "python",
-            "apidoc-python",
-            "options = { paths = [\"src/pkg\"] }\n",
-        ),
-        ("links", "transform-links", ""),
-        ("html", "render-html", ""),
+    for (name, builtin) in [
+        ("markdown", "parser-markdown"),
+        ("rst", "parser-rst"),
+        ("python", "apidoc-python"),
+        ("links", "transform-links"),
+        ("html", "render-html"),
     ] {
-        config.push_str(&format!("\n[[plugins]]\nname = \"{name}\"\n{options}"));
+        config.push_str(&format!("\n[[plugins]]\nname = \"{name}\"\n"));
         match transport {
             None => config.push_str(&format!("builtin = \"{builtin}\"\n")),
             Some(t) => config.push_str(&format!(

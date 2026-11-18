@@ -178,4 +178,14 @@ fn serve_rebuilds_and_reloads() {
     reloads.next();
     assert_eq!(get(port, "/new.html").0, 404);
     assert!(!server.dir.join("site/new.html").exists());
+
+    // A plugin's settings file under `.config/` restarts the plugins.
+    assert!(get(port, "/").1.contains("class=\"anchor\""));
+    write(
+        &server.dir.join(".config/lsdocs/html/settings.toml"),
+        "heading_anchors = false\n",
+    );
+    reloads.next();
+    let (_, body) = get(port, "/");
+    assert!(!body.contains("class=\"anchor\""), "{body}");
 }

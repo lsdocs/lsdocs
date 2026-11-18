@@ -206,8 +206,9 @@ pub(crate) struct PluginClient {
     pub plugin_name: String,
     /// The version it reported.
     pub version: String,
-    /// Its `options` from the site config.
-    pub options: Value,
+    /// A digest of the files it read its settings from (see
+    /// `InitializeResult::config_files`), for cache keys.
+    pub config_digest: Vec<u8>,
     /// What it said it can do.
     pub capabilities: Capabilities,
     /// The `files` globs from the site config, if any.
@@ -231,10 +232,11 @@ impl PluginClient {
         let name = entry.name.clone();
         let files = compile_globs(&name, &entry.files)?;
         let mut init = init.clone();
-        init.options = entry.options.clone();
+        init.config.name = name.clone();
 
         let version;
         let plugin_name;
+        let config_files: Vec<String>;
         let (kind, capabilities) = match &entry.launch {
             Launch::Builtin { name: builtin } => {
                 let plugin = builtins
@@ -248,8 +250,12 @@ impl PluginClient {
                     plugin: name.clone(),
                     events: events.clone(),
                 });
-                let ctx = Context::new(sink, &init);
-                let capabilities = plugin.capabilities_for(&init);
+                let setup = plugin
+                    .setup(&init)
+                    .map_err(|e| HostError::handshake(&name, e))?;
+                let ctx = Context::new(sink, &setup);
+                let capabilities = plugin.capabilities_for(&setup);
+                config_files = setup.config_files;
                 version = plugin.info().version;
                 plugin_name = plugin.info().name;
                 (
@@ -325,6 +331,7 @@ impl PluginClient {
                 tracing::debug!(plugin = %name, remote = %result.plugin.name, version = %result.plugin.version, "plugin started");
                 version = result.plugin.version;
                 plugin_name = result.plugin.name;
+                config_files = result.config_files;
                 (
                     Kind::Remote {
                         peer,
@@ -343,7 +350,7 @@ impl PluginClient {
             name,
             version,
             plugin_name,
-            options: entry.options.clone(),
+            config_digest: config_digest(Path::new(&init.config.dir), &config_files),
             capabilities,
             files,
             permits: Semaphore::new(limit),
@@ -630,4 +637,24 @@ fn router(plugin: &str, events: &Events) -> Router {
         .notification::<notification::Diagnostics, _>(move |p, _| {
             diag_events.handle(&diag_name, Event::Diagnostics(p))
         })
+}
+
+/// A digest of a plugin's settings files: each one's path and contents
+/// (or that it is missing), relative paths from `.config/`.
+fn config_digest(dir: &Path, files: &[String]) -> Vec<u8> {
+    let mut hasher = blake3::Hasher::new();
+    for file in files {
+        hasher.update(&(file.len() as u64).to_le_bytes());
+        hasher.update(file.as_bytes());
+        match std::fs::read(dir.join(file)) {
+            Ok(bytes) => {
+                hasher.update(&[1]);
+                hasher.update(blake3::hash(&bytes).as_bytes());
+            }
+            Err(_) => {
+                hasher.update(&[0]);
+            }
+        }
+    }
+    hasher.finalize().as_bytes().to_vec()
 }

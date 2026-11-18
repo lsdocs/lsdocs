@@ -75,7 +75,8 @@ pub async fn serve(
         &ignored(&root, session.config()),
         session.dependencies(),
     );
-    let mut config_stamp = stamp(config_path);
+    let config_dir = lsdocs_host::config_dir(&root);
+    let mut config_state = ConfigState::take(config_path, &config_dir);
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => break,
@@ -83,14 +84,15 @@ pub async fn serve(
         }
         let ignore = ignored(&root, session.config());
         let now = Snapshot::take(&root, &ignore, session.dependencies());
-        if now == watched {
+        if now == watched && ConfigState::take(config_path, &config_dir) == config_state {
             continue;
         }
         // Let a burst of saves settle before rebuilding.
         tokio::time::sleep(POLL).await;
         watched = Snapshot::take(&root, &ignore, session.dependencies());
-        let changed = if stamp(config_path) != config_stamp {
-            config_stamp = stamp(config_path);
+        let config_now = ConfigState::take(config_path, &config_dir);
+        let changed = if config_now != config_state {
+            config_state = config_now;
             eprintln!("config changed; restarting plugins");
             match load() {
                 Ok(config) => match Session::start(config, &root, builtins, &options.build).await {
@@ -201,6 +203,20 @@ impl Snapshot {
             files.entry(path.clone()).or_insert(stamp);
         }
         Self(files)
+    }
+}
+
+/// The site config and every plugin's settings under `.config/`: a change
+/// to either restarts the plugins, which read their settings at startup.
+#[derive(Debug, PartialEq, Eq)]
+struct ConfigState(Option<(SystemTime, u64)>, Snapshot);
+
+impl ConfigState {
+    fn take(config_path: &Path, config_dir: &Path) -> Self {
+        Self(
+            stamp(config_path),
+            Snapshot::take(config_dir, &[], &BTreeSet::new()),
+        )
     }
 }
 
