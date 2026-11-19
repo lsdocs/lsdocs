@@ -12,8 +12,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # The host and CLI alone: no built-in plugin, so no plugin repository is
-  # fetched. Fast feedback on the core.
+  # The host and CLI alone: no built-in plugin is built. Fast feedback on
+  # the core.
   core:
     runs-on: ubuntu-latest
     steps:
