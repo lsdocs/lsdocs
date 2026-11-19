@@ -51,7 +51,13 @@ a { color: var(--accent); }
 h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin: 1.5em 0 0.5em; }
 code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font-size: 0.875em; }
 code { background: var(--soft); padding: 0.1em 0.3em; border-radius: 4px; }
-pre { background: var(--soft); padding: 1rem; overflow-x: auto; border-radius: 6px; }
+pre { background: var(--soft); padding: 1rem; overflow-x: auto; border-radius: 6px; margin: 0; }
+.lsd-code { margin: 1rem 0; }
+.lsd-code figcaption { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+.lsd-table { overflow-x: auto; margin: 1rem 0; }
+.lsd-tab + .lsd-tab { margin-top: 1rem; }
+.lsd-tab::before { content: attr(data-label); display: block; font-weight: 600; color: var(--muted); }
+lsd-tabs:defined .lsd-tab::before { display: none; }
 pre code { background: none; padding: 0; }
 blockquote { margin: 0; padding: 0 1rem; color: var(--muted); border-left: 4px solid var(--border); }
 table { border-collapse: collapse; }
@@ -65,24 +71,25 @@ img { max-width: 100%; }
 .hl-entity.hl-name.hl-tag { color: var(--hl-tag); }
 .hl-variable.hl-parameter { color: var(--hl-param); }
 .hl-markup.hl-heading { color: var(--hl-constant); font-weight: 600; }
-.toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
-.toc ul { margin: 0; padding-left: 1.25rem; }
-.toc p { margin: 0; }
-.anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
-h1:hover .anchor, h2:hover .anchor, h3:hover .anchor, h4:hover .anchor,
-h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
-.admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
+.lsd-toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
+.lsd-toc ul { margin: 0; padding-left: 1.25rem; }
+.lsd-toc p { margin: 0; }
+.lsd-anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
+h1:hover .lsd-anchor, h2:hover .lsd-anchor, h3:hover .lsd-anchor, h4:hover .lsd-anchor,
+h5:hover .lsd-anchor, h6:hover .lsd-anchor, .lsd-anchor:focus { opacity: 1; }
+.lsd-admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
   border-left: 4px solid var(--accent); border-radius: 6px; }
-.admonition.warning, .admonition.caution, .admonition.important { border-left-color: var(--hl-keyword); }
-.admonition > :last-child { margin-bottom: 0; }
-.admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
+.lsd-admonition[data-kind="warning"], .lsd-admonition[data-kind="caution"],
+.lsd-admonition[data-kind="important"] { border-left-color: var(--hl-keyword); }
+.lsd-admonition > :last-child { margin-bottom: 0; }
+.lsd-admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
 dt { font-weight: 600; }
 dd { margin: 0 0 0.5rem 1.5rem; }
-.footnote { font-size: 0.875rem; color: var(--muted); }
-.footnote-label { margin: 0; }
-.backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-.backlinks p { margin: 0 0 0.25rem; }
-.backlinks ul { margin: 0; padding-left: 1.25rem; }
+.lsd-footnote { font-size: 0.875rem; color: var(--muted); }
+.lsd-footnote-label { margin: 0; }
+.lsd-backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.lsd-backlinks p { margin: 0 0 0.25rem; }
+.lsd-backlinks ul { margin: 0; padding-left: 1.25rem; }
 </style>
 </head>
 <body class="has-nav">
@@ -107,8 +114,8 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 </nav>
 <main>
 <section id="rst-page">
-<h1>reStructuredText <a class="anchor" href="#rst-page" aria-label="Link to this section">#</a></h1>
-<div class="toc"><ul>
+<h1>reStructuredText <a class="lsd-anchor" href="#rst-page" aria-label="Link to this section">#</a></h1>
+<div class="lsd-toc"><ul>
 <li><p><a href="#its-own-section">Its own section</a></p>
 </li>
 </ul>
@@ -117,32 +124,34 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <a href="../guide/configuration.html#config">configuration guide</a> by label, and to <a href="#its-own-section">its own
 section</a> by title.</p>
 <section id="its-own-section">
-<h2>Its own section <a class="anchor" href="#its-own-section" aria-label="Link to this section">#</a></h2>
-<aside class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Admonitions, footnotes <sup class="footnote-ref"><a href="#fn-1" id="fnref-1">1</a></sup> and math such as <span class="math inline">\(a^2 + b^2\)</span> have
+<h2>Its own section <a class="lsd-anchor" href="#its-own-section" aria-label="Link to this section">#</a></h2>
+<div class="lsd-admonition" data-kind="note">
+<p class="lsd-admonition-title">Note</p>
+<p>Admonitions, footnotes <sup class="lsd-footnote-ref"><a href="#fn-1" id="fnref-1">1</a></sup> and math such as <span class="lsd-math lsd-math-inline">\(a^2 + b^2\)</span> have
 core node kinds.</p>
-</aside>
-<div class="footnote" id="fn-1">
-<p class="footnote-label"><a href="#fnref-1">1</a></p>
+</div>
+<div class="lsd-footnote" id="fn-1">
+<p class="lsd-footnote-label"><a href="#fnref-1">1</a></p>
 <p>Numbered automatically.</p>
 </div>
-<pre class="highlight"><code class="language-rust"><span class="hl-source hl-rust"><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-rust"><span class="hl-storage hl-type hl-function hl-rust">fn</span> </span><span class="hl-entity hl-name hl-function hl-rust">main</span></span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-parameters hl-rust"><span class="hl-punctuation hl-section hl-parameters hl-begin hl-rust">(</span></span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-parameters hl-rust"><span class="hl-punctuation hl-section hl-parameters hl-end hl-rust">)</span></span></span></span><span class="hl-meta hl-function hl-rust"> </span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-block hl-rust"><span class="hl-punctuation hl-section hl-block hl-begin hl-rust">{</span>
+<lsd-copy><figure class="lsd-code" data-language="rust"><pre class="highlight"><code class="language-rust"><span class="hl-source hl-rust"><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-rust"><span class="hl-storage hl-type hl-function hl-rust">fn</span> </span><span class="hl-entity hl-name hl-function hl-rust">main</span></span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-parameters hl-rust"><span class="hl-punctuation hl-section hl-parameters hl-begin hl-rust">(</span></span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-parameters hl-rust"><span class="hl-punctuation hl-section hl-parameters hl-end hl-rust">)</span></span></span></span><span class="hl-meta hl-function hl-rust"> </span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-block hl-rust"><span class="hl-punctuation hl-section hl-block hl-begin hl-rust">{</span>
     <span class="hl-support hl-macro hl-rust">println!</span><span class="hl-meta hl-group hl-rust"><span class="hl-punctuation hl-section hl-group hl-begin hl-rust">(</span></span><span class="hl-meta hl-group hl-rust"><span class="hl-string hl-quoted hl-double hl-rust"><span class="hl-punctuation hl-definition hl-string hl-begin hl-rust">&quot;</span>hello<span class="hl-punctuation hl-definition hl-string hl-end hl-rust">&quot;</span></span></span><span class="hl-meta hl-group hl-rust"><span class="hl-punctuation hl-section hl-group hl-end hl-rust">)</span></span><span class="hl-punctuation hl-terminator hl-rust">;</span>
-</span><span class="hl-meta hl-block hl-rust"><span class="hl-punctuation hl-section hl-block hl-end hl-rust">}</span></span></span></span></code></pre>
-<dl>
+</span><span class="hl-meta hl-block hl-rust"><span class="hl-punctuation hl-section hl-block hl-end hl-rust">}</span></span></span></span></code></pre></figure></lsd-copy>
+<dl class="lsd-definition-list">
 <dt>term</dt>
 <dd><p>A definition.</p>
 </dd>
 </dl>
-<figure id="logo">
+<figure class="lsd-figure" id="logo">
 <img src="../img/logo.svg" alt="The lsdocs logo"><figcaption>Fig. 1 The logo, as a figure.</figcaption>
 </figure>
+<div class="lsd-table">
 <table>
 <tr><th>Input</th><th>Output</th></tr>
 <tr><td>rst</td><td>html</td></tr>
 </table>
-<div class="mermaid"></div>
+</div>
+<div class="lsd-mermaid"></div>
 </section>
 </section>
 

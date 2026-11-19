@@ -51,7 +51,13 @@ a { color: var(--accent); }
 h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin: 1.5em 0 0.5em; }
 code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font-size: 0.875em; }
 code { background: var(--soft); padding: 0.1em 0.3em; border-radius: 4px; }
-pre { background: var(--soft); padding: 1rem; overflow-x: auto; border-radius: 6px; }
+pre { background: var(--soft); padding: 1rem; overflow-x: auto; border-radius: 6px; margin: 0; }
+.lsd-code { margin: 1rem 0; }
+.lsd-code figcaption { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+.lsd-table { overflow-x: auto; margin: 1rem 0; }
+.lsd-tab + .lsd-tab { margin-top: 1rem; }
+.lsd-tab::before { content: attr(data-label); display: block; font-weight: 600; color: var(--muted); }
+lsd-tabs:defined .lsd-tab::before { display: none; }
 pre code { background: none; padding: 0; }
 blockquote { margin: 0; padding: 0 1rem; color: var(--muted); border-left: 4px solid var(--border); }
 table { border-collapse: collapse; }
@@ -65,24 +71,25 @@ img { max-width: 100%; }
 .hl-entity.hl-name.hl-tag { color: var(--hl-tag); }
 .hl-variable.hl-parameter { color: var(--hl-param); }
 .hl-markup.hl-heading { color: var(--hl-constant); font-weight: 600; }
-.toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
-.toc ul { margin: 0; padding-left: 1.25rem; }
-.toc p { margin: 0; }
-.anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
-h1:hover .anchor, h2:hover .anchor, h3:hover .anchor, h4:hover .anchor,
-h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
-.admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
+.lsd-toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
+.lsd-toc ul { margin: 0; padding-left: 1.25rem; }
+.lsd-toc p { margin: 0; }
+.lsd-anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
+h1:hover .lsd-anchor, h2:hover .lsd-anchor, h3:hover .lsd-anchor, h4:hover .lsd-anchor,
+h5:hover .lsd-anchor, h6:hover .lsd-anchor, .lsd-anchor:focus { opacity: 1; }
+.lsd-admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
   border-left: 4px solid var(--accent); border-radius: 6px; }
-.admonition.warning, .admonition.caution, .admonition.important { border-left-color: var(--hl-keyword); }
-.admonition > :last-child { margin-bottom: 0; }
-.admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
+.lsd-admonition[data-kind="warning"], .lsd-admonition[data-kind="caution"],
+.lsd-admonition[data-kind="important"] { border-left-color: var(--hl-keyword); }
+.lsd-admonition > :last-child { margin-bottom: 0; }
+.lsd-admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
 dt { font-weight: 600; }
 dd { margin: 0 0 0.5rem 1.5rem; }
-.footnote { font-size: 0.875rem; color: var(--muted); }
-.footnote-label { margin: 0; }
-.backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-.backlinks p { margin: 0 0 0.25rem; }
-.backlinks ul { margin: 0; padding-left: 1.25rem; }
+.lsd-footnote { font-size: 0.875rem; color: var(--muted); }
+.lsd-footnote-label { margin: 0; }
+.lsd-backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.lsd-backlinks p { margin: 0 0 0.25rem; }
+.lsd-backlinks ul { margin: 0; padding-left: 1.25rem; }
 </style>
 </head>
 <body class="has-nav">
@@ -107,8 +114,8 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 </nav>
 <main>
 <section id="getting-started">
-<h1>Getting started <a class="anchor" href="#getting-started" aria-label="Link to this section">#</a></h1>
-<div class="toc"><ul>
+<h1>Getting started <a class="lsd-anchor" href="#getting-started" aria-label="Link to this section">#</a></h1>
+<div class="lsd-toc"><ul>
 <li><p><a href="#install">Install</a></p>
 </li>
 <li><p><a href="#create-a-site">Create a site</a></p>
@@ -121,12 +128,12 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 </div>
 <p>Install lsdocs, create a site, and build it. Back to <a href="../index.html">home</a>.</p>
 <section id="install">
-<h2>Install <a class="anchor" href="#install" aria-label="Link to this section">#</a></h2>
-<pre class="highlight"><code class="language-sh"><span class="hl-source hl-shell hl-bash"><span class="hl-meta hl-function-call hl-shell"><span class="hl-variable hl-function hl-shell">cargo</span></span><span class="hl-meta hl-function-call hl-arguments hl-shell"> install lsdocs</span>
-</span></code></pre>
+<h2>Install <a class="lsd-anchor" href="#install" aria-label="Link to this section">#</a></h2>
+<lsd-copy><figure class="lsd-code" data-language="sh"><pre class="highlight"><code class="language-sh"><span class="hl-source hl-shell hl-bash"><span class="hl-meta hl-function-call hl-shell"><span class="hl-variable hl-function hl-shell">cargo</span></span><span class="hl-meta hl-function-call hl-arguments hl-shell"> install lsdocs</span>
+</span></code></pre></figure></lsd-copy>
 </section>
 <section id="create-a-site">
-<h2>Create a site <a class="anchor" href="#create-a-site" aria-label="Link to this section">#</a></h2>
+<h2>Create a site <a class="lsd-anchor" href="#create-a-site" aria-label="Link to this section">#</a></h2>
 <ol>
 <li>Run <code>lsdocs init my-docs</code>.</li>
 <li>Edit <em>my-docs/docs/index.md</em>.</li>
@@ -134,19 +141,19 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 </ol>
 </section>
 <section id="build">
-<h2>Build <a class="anchor" href="#build" aria-label="Link to this section">#</a></h2>
+<h2>Build <a class="lsd-anchor" href="#build" aria-label="Link to this section">#</a></h2>
 <p>The output goes to <code>site/</code>; <a href="configuration.html#options">Options</a> says how to change
 that.
 Each Markdown page becomes an HTML page;
 other files are copied as they are.</p>
 </section>
 <section id="build-1">
-<h2>Build <a class="anchor" href="#build-1" aria-label="Link to this section">#</a></h2>
+<h2>Build <a class="lsd-anchor" href="#build-1" aria-label="Link to this section">#</a></h2>
 <p>A second heading with the same title gets a unique id.
-Building <span class="math inline">\(n\)</span> pages takes about <span class="math display">\[O(n)\]</span> time.</p>
+Building <span class="lsd-math lsd-math-inline">\(n\)</span> pages takes about <span class="lsd-math lsd-math-display">\[O(n)\]</span> time.</p>
 </section>
 </section>
-<div class="backlinks"><p><strong>Pages linking here</strong></p>
+<div class="lsd-backlinks"><p><strong>Pages linking here</strong></p>
 <ul>
 <li><p><a href="../index.html">Welcome</a></p>
 </li>

@@ -156,7 +156,7 @@ fn in_process_and_out_of_process_builds_match() {
     assert!(index.contains("<title>Home | Test Site</title>"), "{index}");
     assert!(index.contains("Hello &amp; 1 &lt; 2."), "{index}");
     assert!(
-        index.contains("<div class=\"toc\">"),
+        index.contains("<div class=\"lsd-toc\">"),
         "the TOC is missing:\n{index}"
     );
     assert!(
@@ -180,7 +180,7 @@ fn in_process_and_out_of_process_builds_match() {
     );
     let intro = String::from_utf8(in_process["guide/intro.html"].clone()).unwrap();
     assert!(
-        !intro.contains("<div class=\"toc\">"),
+        !intro.contains("<div class=\"lsd-toc\">"),
         "single-heading pages get no TOC:\n{intro}"
     );
 

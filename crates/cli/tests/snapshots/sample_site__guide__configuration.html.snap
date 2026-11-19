@@ -51,7 +51,13 @@ a { color: var(--accent); }
 h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin: 1.5em 0 0.5em; }
 code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font-size: 0.875em; }
 code { background: var(--soft); padding: 0.1em 0.3em; border-radius: 4px; }
-pre { background: var(--soft); padding: 1rem; overflow-x: auto; border-radius: 6px; }
+pre { background: var(--soft); padding: 1rem; overflow-x: auto; border-radius: 6px; margin: 0; }
+.lsd-code { margin: 1rem 0; }
+.lsd-code figcaption { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+.lsd-table { overflow-x: auto; margin: 1rem 0; }
+.lsd-tab + .lsd-tab { margin-top: 1rem; }
+.lsd-tab::before { content: attr(data-label); display: block; font-weight: 600; color: var(--muted); }
+lsd-tabs:defined .lsd-tab::before { display: none; }
 pre code { background: none; padding: 0; }
 blockquote { margin: 0; padding: 0 1rem; color: var(--muted); border-left: 4px solid var(--border); }
 table { border-collapse: collapse; }
@@ -65,24 +71,25 @@ img { max-width: 100%; }
 .hl-entity.hl-name.hl-tag { color: var(--hl-tag); }
 .hl-variable.hl-parameter { color: var(--hl-param); }
 .hl-markup.hl-heading { color: var(--hl-constant); font-weight: 600; }
-.toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
-.toc ul { margin: 0; padding-left: 1.25rem; }
-.toc p { margin: 0; }
-.anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
-h1:hover .anchor, h2:hover .anchor, h3:hover .anchor, h4:hover .anchor,
-h5:hover .anchor, h6:hover .anchor, .anchor:focus { opacity: 1; }
-.admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
+.lsd-toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
+.lsd-toc ul { margin: 0; padding-left: 1.25rem; }
+.lsd-toc p { margin: 0; }
+.lsd-anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
+h1:hover .lsd-anchor, h2:hover .lsd-anchor, h3:hover .lsd-anchor, h4:hover .lsd-anchor,
+h5:hover .lsd-anchor, h6:hover .lsd-anchor, .lsd-anchor:focus { opacity: 1; }
+.lsd-admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
   border-left: 4px solid var(--accent); border-radius: 6px; }
-.admonition.warning, .admonition.caution, .admonition.important { border-left-color: var(--hl-keyword); }
-.admonition > :last-child { margin-bottom: 0; }
-.admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
+.lsd-admonition[data-kind="warning"], .lsd-admonition[data-kind="caution"],
+.lsd-admonition[data-kind="important"] { border-left-color: var(--hl-keyword); }
+.lsd-admonition > :last-child { margin-bottom: 0; }
+.lsd-admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
 dt { font-weight: 600; }
 dd { margin: 0 0 0.5rem 1.5rem; }
-.footnote { font-size: 0.875rem; color: var(--muted); }
-.footnote-label { margin: 0; }
-.backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-.backlinks p { margin: 0 0 0.25rem; }
-.backlinks ul { margin: 0; padding-left: 1.25rem; }
+.lsd-footnote { font-size: 0.875rem; color: var(--muted); }
+.lsd-footnote-label { margin: 0; }
+.lsd-backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.lsd-backlinks p { margin: 0 0 0.25rem; }
+.lsd-backlinks ul { margin: 0; padding-left: 1.25rem; }
 </style>
 </head>
 <body class="has-nav">
@@ -107,8 +114,8 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 </nav>
 <main>
 <section id="config">
-<h1>Configuring a site <a class="anchor" href="#config" aria-label="Link to this section">#</a></h1>
-<div class="toc"><ul>
+<h1>Configuring a site <a class="lsd-anchor" href="#config" aria-label="Link to this section">#</a></h1>
+<div class="lsd-toc"><ul>
 <li><p><a href="#options">Options</a></p>
 </li>
 <li><p><a href="#plugins">Plugins</a></p>
@@ -118,36 +125,38 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <blockquote>
 <p>Settings live in <code>lsdocs.toml</code>, next to the <code>docs/</code> directory.</p>
 </blockquote>
-<aside class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Unknown keys are an error<sup class="footnote-ref"><a href="#fn-strict" id="fnref-strict">strict</a></sup>, so typos are caught early.</p>
-</aside>
+<div class="lsd-admonition" data-kind="note">
+<p class="lsd-admonition-title">Note</p>
+<p>Unknown keys are an error<sup class="lsd-footnote-ref"><a href="#fn-strict" id="fnref-strict">strict</a></sup>, so typos are caught early.</p>
+</div>
 <section id="options">
-<h2>Options <a class="anchor" href="#options" aria-label="Link to this section">#</a></h2>
+<h2>Options <a class="lsd-anchor" href="#options" aria-label="Link to this section">#</a></h2>
+<div class="lsd-table">
 <table>
 <tr><th>Key</th><th style="text-align: center">Default</th><th>Meaning</th></tr>
 <tr><td><code>build.source_dir</code></td><td style="text-align: center"><code>docs</code></td><td>Where pages are read from</td></tr>
 <tr><td><code>build.output_dir</code></td><td style="text-align: center"><code>site</code></td><td>Where the site is written</td></tr>
 </table>
+</div>
 </section>
 <section id="plugins">
-<h2>Plugins <a class="anchor" href="#plugins" aria-label="Link to this section">#</a></h2>
-<pre class="highlight"><code class="language-toml"><span class="hl-source hl-toml"><span class="hl-punctuation hl-definition hl-table hl-array hl-begin hl-toml">[[</span><span class="hl-meta hl-tag hl-table hl-array hl-toml"><span class="hl-entity hl-name hl-table hl-toml">plugins</span></span><span class="hl-punctuation hl-definition hl-table hl-array hl-end hl-toml">]]</span>
+<h2>Plugins <a class="lsd-anchor" href="#plugins" aria-label="Link to this section">#</a></h2>
+<lsd-copy><figure class="lsd-code" data-language="toml"><pre class="highlight"><code class="language-toml"><span class="hl-source hl-toml"><span class="hl-punctuation hl-definition hl-table hl-array hl-begin hl-toml">[[</span><span class="hl-meta hl-tag hl-table hl-array hl-toml"><span class="hl-entity hl-name hl-table hl-toml">plugins</span></span><span class="hl-punctuation hl-definition hl-table hl-array hl-end hl-toml">]]</span>
 <span class="hl-meta hl-tag hl-key hl-toml"><span class="hl-entity hl-name hl-tag hl-toml">name</span></span> <span class="hl-punctuation hl-definition hl-key-value hl-toml">=</span> <span class="hl-string hl-quoted hl-double hl-basic hl-toml"><span class="hl-punctuation hl-definition hl-string hl-begin hl-toml">&quot;</span>markdown<span class="hl-punctuation hl-definition hl-string hl-end hl-toml">&quot;</span></span>
 <span class="hl-meta hl-tag hl-key hl-toml"><span class="hl-entity hl-name hl-tag hl-toml">builtin</span></span> <span class="hl-punctuation hl-definition hl-key-value hl-toml">=</span> <span class="hl-string hl-quoted hl-double hl-basic hl-toml"><span class="hl-punctuation hl-definition hl-string hl-begin hl-toml">&quot;</span>parser-markdown<span class="hl-punctuation hl-definition hl-string hl-end hl-toml">&quot;</span></span>
-</span></code></pre>
+</span></code></pre></figure></lsd-copy>
 <details>
 <summary>Raw HTML passes through</summary>
 <p>Content inside is still Markdown.</p>
 </details>
 <p>Escaping works: 1 &lt; 2 &amp;&amp; &quot;quotes&quot; stay safe.</p>
-<div class="footnote" id="fn-strict">
-<p class="footnote-label"><a href="#fnref-strict">strict</a></p>
+<div class="lsd-footnote" id="fn-strict">
+<p class="lsd-footnote-label"><a href="#fnref-strict">strict</a></p>
 <p>Plugin settings are the plugins&#39; own files, under <code>.config/</code>.</p>
 </div>
 </section>
 </section>
-<div class="backlinks"><p><strong>Pages linking here</strong></p>
+<div class="lsd-backlinks"><p><strong>Pages linking here</strong></p>
 <ul>
 <li><p><a href="getting-started.html">Getting started</a></p>
 </li>
