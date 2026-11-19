@@ -66,7 +66,7 @@ lsdocs/
   plugins/
     parser-markdown/  parser-rst/
     transform-toc/  transform-links/  transform-nav/  transform-highlight/
-    render-html/    themes: default; zensical              (planned, Phase 13)
+    render-html/    themes: default, plain
     sphinx-addons/  Sphinx's directives and roles
     apidoc-python/  apidoc-typescript/  apidoc-clang/  apidoc-rust/
   bindings/
@@ -606,8 +606,9 @@ unchecked items above stay open as follow-ups.
 ## Phase 13: HTML themes
 
 **Goal:** themes configured by settings, not one renderer per theme
-variant, with the [zensical theme](https://github.com/zensical/ui) as the
-flagship. Today's default theme stays as the simple built-in one.
+variant, with a flagship theme, `default`, whose look follows the
+[zensical theme](https://github.com/zensical/ui)'s (MIT licensed; lsdocs
+took the look, not the code). The earlier simple theme stays as `plain`.
 
 ### Protocol names
 Decided (the user's names; design in
@@ -756,31 +757,35 @@ Decisions:
       site (37 pages, 853 sections) search.json is 199 KB, 47 KB gzipped;
       a real engine (or a prebuilt, tokenized index) can come later if that
       grows too much.
-- [ ] Content components themes style: content tabs, buttons, icons and
-      emoji, code block titles, copy buttons, highlighted lines. Each needs
-      a node kind or a `custom` convention, and Markdown and
-      reStructuredText syntax (tabs: a `tab-set`-style directive, and
-      MkDocs-style `===` blocks).
+- [~] Content components themes style. Done: content tabs (`tab-set` /
+      `tab-item` directives in `sphinx-addons`, for both parsers) and
+      copy buttons. Not done, and on the TODO list: buttons, icons and
+      emoji, code block titles, highlighted lines, and MkDocs-style `===`
+      tab blocks.
 
-### 13c: The zensical theme
-- [ ] Research first. zensical/ui is MIT licensed and early-stage (its
-      README says its API may change). Find its template engine and the
-      data its templates expect from the generator, its settings (palette,
-      feature flags, ...), and how its assets are built (Node 24, esbuild,
-      Sass, PostCSS). Decide: port its templates to minijinja, or render
-      them as they are if the engine is compatible; ship its built assets
-      or build them.
-- [ ] Port, keeping its license notice; map lsdocs nodes to the markup its
-      styles expect (admonitions, code blocks, tables, tabs).
-- [ ] Features, as the research finds them: navigation tabs and sections,
-      a table-of-contents sidebar, search, a dark mode toggle, instant
-      navigation, code copy and annotations, header and footer.
-- [ ] Track upstream: pin a version, and check for upstream changes to the
-      templates we ported.
-- [ ] The docs site uses it.
+### 13c: The flagship theme (replaces the plan to port zensical's)
+Decided while building it: no port of zensical-ui's templates or assets.
+Its look is the reference (colors, layout, components), reimplemented
+as the `default` theme's own templates, CSS and TypeScript; nothing of
+its code is copied, so no license notice is needed (zensical-ui is MIT
+anyway).
+- [x] Features: header with palette toggle and search, navigation
+      sidebar, table-of-contents sidebar with scroll highlighting,
+      drawers on narrow screens, previous/next pager, footer with social
+      links, edit-this-page link, content tabs, code copy buttons, search.
+- [x] Settings, overrides, theme directories: 13a.
+- [x] The docs site uses `default` (`docs/.config/lsdocs/html/settings.toml`),
+      and has a "Themes" guide page.
+- [x] Browser baseline: 2024-era evergreen browsers, no fallbacks (CSS
+      nesting, `light-dark()`, relative color syntax, `:has()`, import
+      maps, module workers). Search needs http(s), not `file://`.
+- [ ] Not done: instant navigation, code annotations (the other zensical
+      features), navigation tabs (top-level sections as header tabs).
+- [ ] Tracking upstream is not needed while nothing is ported; revisit
+      the look when zensical-ui changes a lot.
 
-**Exit:** the docs site builds with the zensical theme, configured only by
-settings and a template override or two.
+**Exit:** the docs site builds with the `default` theme, configured only
+by settings. Met.
 
 ## Phase 14: Release
 
