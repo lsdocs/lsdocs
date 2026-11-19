@@ -1,0 +1,61 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/*",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# The base MSRV; crates needing more set their own (`nur msrv` checks
+# each crate on its own).
+rust-version = "1.89"
+license = "Apache-2.0 OR MIT"
+# Nothing is published until package names are checked on crates.io.
+publish = false
+
+[workspace.dependencies]
+lsdocs-config = { git = "https://github.com/lsdocs/lsdocs-protocol", branch = "main", version = "0.1.0" }
+lsdocs-protocol = { git = "https://github.com/lsdocs/lsdocs-protocol", branch = "main", version = "0.1.0" }
+lsdocs-rpc = { git = "https://github.com/lsdocs/lsdocs-plugin-sdk", branch = "main", version = "0.1.0" }
+lsdocs-plugin-sdk = { git = "https://github.com/lsdocs/lsdocs-plugin-sdk", branch = "main", version = "0.1.0" }
+lsdocs-host = { path = "crates/host", version = "0.1.0" }
+lsdocs-parser-markdown = { git = "https://github.com/lsdocs/lsdocs-markdown", branch = "main", version = "0.1.0" }
+lsdocs-parser-rst = { git = "https://github.com/lsdocs/lsdocs-rst", branch = "main", version = "0.1.0" }
+lsdocs-transform-toc = { git = "https://github.com/lsdocs/lsdocs-transform-toc", branch = "main", version = "0.1.0" }
+lsdocs-transform-highlight = { git = "https://github.com/lsdocs/lsdocs-transform-highlight", branch = "main", version = "0.1.0" }
+lsdocs-transform-links = { git = "https://github.com/lsdocs/lsdocs-transform-links", branch = "main", version = "0.1.0" }
+lsdocs-apidoc-python = { git = "https://github.com/lsdocs/lsdocs-apidoc-python", branch = "main", version = "0.1.0" }
+lsdocs-apidoc-typescript = { git = "https://github.com/lsdocs/lsdocs-apidoc-typescript", branch = "main", version = "0.1.0" }
+lsdocs-apidoc-rust = { git = "https://github.com/lsdocs/lsdocs-apidoc-rust", branch = "main", version = "0.1.0" }
+lsdocs-apidoc-clang = { git = "https://github.com/lsdocs/lsdocs-apidoc-clang", branch = "main", version = "0.1.0" }
+lsdocs-sphinx-addons = { git = "https://github.com/lsdocs/lsdocs-sphinx-addons", branch = "main", version = "0.1.0" }
+lsdocs-extras-plugin = { git = "https://github.com/lsdocs/lsdocs-extras", branch = "main", version = "0.1.0" }
+lsdocs-transform-nav = { git = "https://github.com/lsdocs/lsdocs-transform-nav", branch = "main", version = "0.1.0" }
+lsdocs-render-html = { git = "https://github.com/lsdocs/lsdocs-render-html", branch = "main", version = "0.1.0" }
+
+# Third-party crates.
+blake3 = { version = "1.8.7", default-features = false, features = ["std", "pure"] }
+clap = { version = "4.6.7", features = ["derive"] }
+futures-util = { version = "0.3.34", default-features = false }
+insta = "1.49.0"
+globset = "0.4.19"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+tokio = { version = "1.54.1", default-features = false }
+tracing = "0.1.44"
+tracing-subscriber = "0.3.23"
+
+[workspace.lints.rust]
+# `deny` rather than `forbid` so the rpc crate can opt in locally with
+# `#[allow(unsafe_code)]` for handle duplication (Phase 2).
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+# Library and binary code returns errors instead of panicking. Tests opt
+# out with `#![allow(clippy::unwrap_used, ...)]` at the top of the module.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
