@@ -150,9 +150,11 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <p>Content inside is still Markdown.</p>
 </details>
 <p>Escaping works: 1 &lt; 2 &amp;&amp; &quot;quotes&quot; stay safe.</p>
+<div class="lsd-footnotes" role="doc-endnotes">
 <div class="lsd-footnote" id="fn-strict">
 <p class="lsd-footnote-label"><a href="#fnref-strict">strict</a></p>
 <p>Plugin settings are the plugins&#39; own files, under <code>.config/</code>.</p>
+</div>
 </div>
 </section>
 </section>

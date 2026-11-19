@@ -130,9 +130,11 @@ section</a> by title.</p>
 <p>Admonitions, footnotes <sup class="lsd-footnote-ref"><a href="#fn-1" id="fnref-1">1</a></sup> and math such as <span class="lsd-math lsd-math-inline">\(a^2 + b^2\)</span> have
 core node kinds.</p>
 </div>
+<div class="lsd-footnotes" role="doc-endnotes">
 <div class="lsd-footnote" id="fn-1">
 <p class="lsd-footnote-label"><a href="#fnref-1">1</a></p>
 <p>Numbered automatically.</p>
+</div>
 </div>
 <lsd-copy><figure class="lsd-code" data-language="rust"><pre class="highlight"><code class="language-rust"><span class="hl-source hl-rust"><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-rust"><span class="hl-storage hl-type hl-function hl-rust">fn</span> </span><span class="hl-entity hl-name hl-function hl-rust">main</span></span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-parameters hl-rust"><span class="hl-punctuation hl-section hl-parameters hl-begin hl-rust">(</span></span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-function hl-parameters hl-rust"><span class="hl-punctuation hl-section hl-parameters hl-end hl-rust">)</span></span></span></span><span class="hl-meta hl-function hl-rust"> </span><span class="hl-meta hl-function hl-rust"><span class="hl-meta hl-block hl-rust"><span class="hl-punctuation hl-section hl-block hl-begin hl-rust">{</span>
     <span class="hl-support hl-macro hl-rust">println!</span><span class="hl-meta hl-group hl-rust"><span class="hl-punctuation hl-section hl-group hl-begin hl-rust">(</span></span><span class="hl-meta hl-group hl-rust"><span class="hl-string hl-quoted hl-double hl-rust"><span class="hl-punctuation hl-definition hl-string hl-begin hl-rust">&quot;</span>hello<span class="hl-punctuation hl-definition hl-string hl-end hl-rust">&quot;</span></span></span><span class="hl-meta hl-group hl-rust"><span class="hl-punctuation hl-section hl-group hl-end hl-rust">)</span></span><span class="hl-punctuation hl-terminator hl-rust">;</span>
