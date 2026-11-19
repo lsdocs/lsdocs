@@ -68,6 +68,7 @@ lsdocs/
     transform-toc/  transform-links/  transform-nav/  transform-highlight/
     render-html/    themes: default, plain
     sphinx-addons/  Sphinx's directives and roles
+    extras/         lsdocs' own content features (content tabs)
     apidoc-python/  apidoc-typescript/  apidoc-clang/  apidoc-rust/
   bindings/
     plugin/python/  plugin/node/    the plugin SDK bindings
@@ -758,7 +759,8 @@ Decisions:
       a real engine (or a prebuilt, tokenized index) can come later if that
       grows too much.
 - [~] Content components themes style. Done: content tabs (`tab-set` /
-      `tab-item` directives in `sphinx-addons`, for both parsers) and
+      `tab-item` directives, sphinx-design's names, in the `extras`
+      plugin, for both parsers) and
       copy buttons. Not done, and on the TODO list: buttons, icons and
       emoji, code block titles, highlighted lines, and MkDocs-style `===`
       tab blocks.
@@ -889,6 +891,10 @@ those lists current. To fix:
 - [ ] Option values of unknown directives are kept as strings.
 - [ ] Diagnostics about included files have no span.
 
+- [ ] Task lists (`- [ ] item`, `- [x] item`) in reStructuredText: a
+      docutils-style extension, so both parsers have them (Markdown's come
+      from pulldown-cmark).
+
 ### `sphinx-addons` and syntax extensions
 - [ ] The Python and Node.js plugin SDKs cannot declare syntax yet
       (`Plugin::syntax` is Rust only).
@@ -905,6 +911,16 @@ those lists current. To fix:
       content is a definition list); `conf.py` settings that change
       parsing (`default_role`, `rst_prolog` / `rst_epilog`, the
       `|version|` and `|release|` substitutions).
+
+### `extras`
+Built-in content features that are neither docutils' nor Sphinx's
+(`plugins/extras`, crate `lsdocs-extras-plugin`; decided after Phase 13:
+content tabs moved there from `sphinx-addons`, since `tab-set` and
+`tab-item` come from the third-party sphinx-design extension, not
+Sphinx). Planned:
+- [ ] Inline icons (a role).
+- [ ] Admonition overrides and additions (new kinds, custom titles and
+      icons).
 
 ### Plugins to write
 - [ ] `ext-ref`: references to other sites' objects and labels, read from

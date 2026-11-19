@@ -25,6 +25,7 @@ lsdocs-render-html.workspace = true
 lsdocs-transform-highlight.workspace = true
 lsdocs-transform-links.workspace = true
 lsdocs-sphinx-addons.workspace = true
+lsdocs-extras-plugin.workspace = true
 lsdocs-apidoc-python = { workspace = true, optional = true }
 lsdocs-apidoc-typescript = { workspace = true, optional = true }
 lsdocs-apidoc-rust = { workspace = true, optional = true }
