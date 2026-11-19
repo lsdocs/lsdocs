@@ -921,6 +921,10 @@ those lists current. To fix:
       `lsdocs serve` shows edits to a theme directory only after a
       restart (or a change under `.config/`). Report the theme's files as
       render dependencies, or reload the theme when they change.
+- [ ] Old hashed theme assets accumulate in the output directory across
+      separate builds and `serve` restarts (`crates/host/src/lib.rs`
+      prunes only within one `Session`). Keep a manifest of written
+      assets in `.lsdocs-cache/` and prune against it.
 - [ ] The `default` theme's social icons are a few generic ones drawn for
       it (`link`, `mail`, `rss`, `chat`, `code`) or an image; no brand
       icons (GitHub, Mastodon, ...) yet, which need a licensed icon set.
@@ -940,7 +944,6 @@ those lists current. To fix:
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | before 1.0 |
 | Site-wide data shared once (e.g. navigation) instead of per page | open | when nav cost matters |
 | How Sphinx add-ons hook into parsing | declared syntax: parsers make neutral nodes, a transformer gives them meaning | 11a |
-| zensical templates: port to minijinja or render as they are | research first | 13c |
 
 Decided ones, with their reasons, are in [HISTORY.md](HISTORY.md) (phases 0-9)
 or under their phase above.
