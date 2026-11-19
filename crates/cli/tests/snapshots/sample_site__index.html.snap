@@ -8,89 +8,7 @@ expression: text
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Welcome | lsdocs sample</title>
-<style>
-:root {
-  --fg: #1f2328; --muted: #59636e; --bg: #ffffff; --soft: #f6f8fa;
-  --border: #d1d9e0; --accent: #0969da;
-  --hl-comment: #59636e; --hl-keyword: #cf222e; --hl-string: #0a3069;
-  --hl-constant: #0550ae; --hl-name: #8250df; --hl-tag: #116329; --hl-param: #953800;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fg: #e6edf3; --muted: #9198a1; --bg: #0d1117; --soft: #151b23;
-    --border: #3d444d; --accent: #4493f8;
-    --hl-comment: #9198a1; --hl-keyword: #ff7b72; --hl-string: #a5d6ff;
-    --hl-constant: #79c0ff; --hl-name: #d2a8ff; --hl-tag: #7ee787; --hl-param: #ffa657;
-  }
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0; color: var(--fg); background: var(--bg);
-  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-header, .layout, footer { max-width: 48rem; margin: 0 auto; padding: 0 1rem; }
-.has-nav header, .has-nav .layout, .has-nav footer { max-width: 68rem; }
-.has-nav .layout { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: 2rem; }
-@media (max-width: 48rem) { .has-nav .layout { display: block; } }
-header { padding-top: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
-header a { color: var(--fg); font-weight: 600; text-decoration: none; }
-main { padding-top: 1rem; padding-bottom: 2rem; }
-.site-nav { padding-top: 2rem; font-size: 0.9375rem; }
-.site-nav ul { list-style: none; margin: 0; padding: 0; }
-.site-nav ul ul { padding-left: 1rem; }
-.site-nav li { margin: 0.2rem 0; }
-.site-nav a { color: var(--fg); text-decoration: none; }
-.site-nav a:hover { color: var(--accent); }
-.site-nav span { color: var(--muted); font-weight: 600; }
-.site-nav [aria-current="page"] { color: var(--accent); font-weight: 600; }
-.pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
-  padding-top: 1rem; border-top: 1px solid var(--border); }
-.pager .next { margin-left: auto; text-align: right; }
-footer { color: var(--muted); font-size: 0.875rem; padding-bottom: 2rem; }
-a { color: var(--accent); }
-h1, h2, h3, h4, h5, h6 { line-height: 1.25; margin: 1.5em 0 0.5em; }
-code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font-size: 0.875em; }
-code { background: var(--soft); padding: 0.1em 0.3em; border-radius: 4px; }
-pre { background: var(--soft); padding: 1rem; overflow-x: auto; border-radius: 6px; margin: 0; }
-.lsd-code { margin: 1rem 0; }
-.lsd-code figcaption { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
-.lsd-table { overflow-x: auto; margin: 1rem 0; }
-.lsd-tab + .lsd-tab { margin-top: 1rem; }
-.lsd-tab::before { content: attr(data-label); display: block; font-weight: 600; color: var(--muted); }
-lsd-tabs:defined .lsd-tab::before { display: none; }
-pre code { background: none; padding: 0; }
-blockquote { margin: 0; padding: 0 1rem; color: var(--muted); border-left: 4px solid var(--border); }
-table { border-collapse: collapse; }
-th, td { border: 1px solid var(--border); padding: 0.3rem 0.75rem; }
-img { max-width: 100%; }
-.hl-comment { color: var(--hl-comment); font-style: italic; }
-.hl-keyword, .hl-storage, .hl-invalid { color: var(--hl-keyword); }
-.hl-string { color: var(--hl-string); }
-.hl-constant, .hl-support, .hl-attribute-name { color: var(--hl-constant); }
-.hl-entity.hl-name, .hl-variable.hl-function { color: var(--hl-name); }
-.hl-entity.hl-name.hl-tag { color: var(--hl-tag); }
-.hl-variable.hl-parameter { color: var(--hl-param); }
-.hl-markup.hl-heading { color: var(--hl-constant); font-weight: 600; }
-.lsd-toc { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
-.lsd-toc ul { margin: 0; padding-left: 1.25rem; }
-.lsd-toc p { margin: 0; }
-.lsd-anchor { margin-left: 0.25rem; color: var(--muted); text-decoration: none; opacity: 0; }
-h1:hover .lsd-anchor, h2:hover .lsd-anchor, h3:hover .lsd-anchor, h4:hover .lsd-anchor,
-h5:hover .lsd-anchor, h6:hover .lsd-anchor, .lsd-anchor:focus { opacity: 1; }
-.lsd-admonition { margin: 1rem 0; padding: 0.5rem 1rem; background: var(--soft);
-  border-left: 4px solid var(--accent); border-radius: 6px; }
-.lsd-admonition[data-kind="warning"], .lsd-admonition[data-kind="caution"],
-.lsd-admonition[data-kind="important"] { border-left-color: var(--hl-keyword); }
-.lsd-admonition > :last-child { margin-bottom: 0; }
-.lsd-admonition-title { margin: 0 0 0.25rem; font-weight: 600; }
-dt { font-weight: 600; }
-dd { margin: 0 0 0.5rem 1.5rem; }
-.lsd-footnote { font-size: 0.875rem; color: var(--muted); }
-.lsd-footnote-label { margin: 0; }
-.lsd-backlinks { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-.lsd-backlinks p { margin: 0 0 0.25rem; }
-.lsd-backlinks ul { margin: 0; padding-left: 1.25rem; }
-</style>
+<link rel="stylesheet" href="_lsdocs/plain.559cd8fe.css">
 </head>
 <body class="has-nav">
 <header><a href="index.html">lsdocs sample</a></header>
@@ -113,6 +31,13 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 </ul>
 </nav>
 <main>
+<details class="page-toc">
+<summary>On this page</summary>
+<ul>
+<li><a href="#what-s-inside">What&#x27;s inside</a></li>
+<li><a href="#status">Status</a></li>
+</ul>
+</details>
 <section id="lsdocs-sample-site">
 <h1>lsdocs sample site <a class="lsd-anchor" href="#lsdocs-sample-site" aria-label="Link to this section">#</a></h1>
 <p>This site shows what the first-party plugins produce. Start with the

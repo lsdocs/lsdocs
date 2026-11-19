@@ -664,22 +664,31 @@ Decisions:
   settings it does not implement are a warning, once.
 
 ### 13a: The settings scheme
-- [ ] A theme is a directory: templates (minijinja, with `extends` and
-      blocks), partials, static assets, and a manifest declaring its
-      settings (with a JSON Schema, for validation and defaults) and the
-      data it needs.
-- [ ] Site configuration: the theme to use (a built-in name or a
-      directory), its settings, and overrides (a directory whose templates
-      and assets replace or extend the theme's, block by block). Its
-      settings live in render-html's `.config/` directory (a theme's own
-      settings file there); whether `site.theme` (reserved) names the
-      theme is still open.
+- [x] A theme is a directory: `theme.toml` (its `[settings]` with their
+      defaults), `templates/` (minijinja, with `extends` and blocks;
+      `page.html` renders each page) and `assets/`. No JSON Schema: each
+      setting's kind is its default's (my call; simpler for theme
+      authors, and enough to catch typos and wrong kinds). The built-in
+      themes (`default`, `plain`) live in `plugins/render-html/themes/`,
+      embedded by `build.rs`.
+- [x] Site configuration: render-html's settings
+      (`.config/lsdocs/<name>/settings.toml`) take `theme` (a built-in
+      name, else a directory relative to the site), `theme_settings`
+      (the design's `[theme]` table, renamed since TOML cannot have both a
+      `theme` string and a `[theme]` table) and `overrides` (a directory
+      of `templates/` and `assets/` layered on the theme's file by file;
+      an override extends the original as `theme/<path>`). `site.theme`
+      is gone from `lsdocs.toml` (a `theme` key there is an error saying
+      where it went), and render-html's `template` setting with it.
 - [ ] Settings every theme should take: palette (light, dark or following
       the system; primary and accent colors), fonts, logo and favicon,
       language and translatable labels, extra CSS and JS, social links,
       footer text, edit-this-page links.
-- [ ] Assets: copying the theme's assets, fingerprinting, minifying where
-      cheap.
+- [x] Assets: written at `render/transform/all` to
+      `_lsdocs/<path-stem>.<hash8>.<ext>` (blake3), referred to through
+      the `asset()` template function; `asset_importmap()` maps JavaScript
+      modules' plain URLs to their hashed ones, so modules keep plain
+      relative imports. Not minified (the files are small).
 
 ### 13b: Data for themes
 - [x] The table of contents as data for templates (a sidebar), not only
@@ -848,6 +857,10 @@ those lists current. To fix:
 - [ ] `render-html` draws `custom` nodes as an empty `div` with the kind as
       its class, so the content of unknown directives (`mermaid` and the
       like) is not shown unless a transformer handles it.
+- [ ] `render-html` loads its theme (and overrides) once per session, so
+      `lsdocs serve` shows edits to a theme directory only after a
+      restart (or a change under `.config/`). Report the theme's files as
+      render dependencies, or reload the theme when they change.
 
 ### Docs
 - [ ] The docs site names `spec/wire.md` without linking to it, since pages
@@ -861,7 +874,6 @@ those lists current. To fix:
 | Transformers: whole tree vs. patches | whole tree; patches decided with benchmarks | before 1.0 |
 | Site-wide data shared once (e.g. navigation) instead of per page | open | when nav cost matters |
 | How Sphinx add-ons hook into parsing | declared syntax: parsers make neutral nodes, a transformer gives them meaning | 11a |
-| Naming the theme: `site.theme` or render-html's settings | open (settings themselves: render-html's `.config/` directory) | 13a |
 | zensical templates: port to minijinja or render as they are | research first | 13c |
 
 Decided ones, with their reasons, are in [HISTORY.md](HISTORY.md) (phases 0-9)

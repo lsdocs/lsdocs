@@ -354,8 +354,13 @@ fn config_file_changes_invalidate_cached_results() {
         std::fs::read_to_string(site.join("site/page.html")).unwrap()
     };
     // The inline toc is off by default; with it on, it lists `Two` (depth 3,
-    // the default): a link besides the heading's own anchor.
-    let toc = |page: &str| page.matches("href=\"#two\"").count() == 2;
+    // the default).
+    let toc = |page: &str| {
+        page.split("<div class=\"lsd-toc\">")
+            .nth(1)
+            .and_then(|list| list.split("</div>").next())
+            .is_some_and(|list| list.contains("href=\"#two\""))
+    };
     assert!(!toc(&build()));
     // A settings file appearing is a change of settings.
     let settings = site.join(".config/lsdocs/toc/settings.toml");

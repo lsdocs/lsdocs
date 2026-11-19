@@ -33,6 +33,18 @@ fn files(dir: &Path, prefix: &str, out: &mut Vec<(String, PathBuf)>) {
     }
 }
 
+/// `rel` without the content hash of a theme asset's name
+/// (`_lsdocs/plain.1a2b3c4d.css` is `_lsdocs/plain.css`).
+fn unhashed(rel: &str) -> String {
+    let Some(asset) = rel.strip_prefix("_lsdocs/") else {
+        return rel.to_owned();
+    };
+    let parts: Vec<&str> = asset.split('.').collect();
+    let hashed = |part: &&str| part.len() == 8 && part.bytes().all(|b| b.is_ascii_hexdigit());
+    let kept: Vec<&str> = parts.iter().filter(|p| !hashed(p)).copied().collect();
+    format!("_lsdocs/{}", kept.join("."))
+}
+
 #[test]
 fn sample_site_output() {
     let out = std::env::temp_dir().join(format!("lsdocs-sample-site-{}", std::process::id()));
@@ -58,10 +70,12 @@ fn sample_site_output() {
 
     let mut built = Vec::new();
     files(&out, "", &mut built);
-    let names: Vec<_> = built.iter().map(|(rel, _)| rel.as_str()).collect();
+    // Theme assets' names carry a hash of their contents.
+    let names: Vec<_> = built.iter().map(|(rel, _)| unhashed(rel)).collect();
     assert_eq!(
         names,
         [
+            "_lsdocs/plain.css",
             "genindex.html",
             "guide/configuration.html",
             "guide/getting-started.html",
@@ -80,6 +94,14 @@ fn sample_site_output() {
         if rel.ends_with(".html") || rel == "sitemap.xml" {
             let text = std::fs::read_to_string(path).unwrap();
             insta::assert_snapshot!(rel.replace('/', "__"), text);
+        } else if rel.starts_with("_lsdocs/") {
+            assert!(
+                built.iter().any(|(page, path)| page.ends_with(".html")
+                    && std::fs::read_to_string(path)
+                        .unwrap()
+                        .contains(rel.as_str())),
+                "no page links to {rel}"
+            );
         } else {
             assert_eq!(
                 std::fs::read(path).unwrap(),
