@@ -1,4 +1,4 @@
-//! Builds `examples/sample-site` and snapshots every output file.
+//! Builds `tests/site` (the sample site) and snapshots every output file.
 //!
 //! After an intended change to the output, update the snapshots with
 //! `nur snapshots` and review the diff.
@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn sample_site() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/sample-site")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/site")
 }
 
 fn files(dir: &Path, prefix: &str, out: &mut Vec<(String, PathBuf)>) {

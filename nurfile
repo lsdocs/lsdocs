@@ -25,9 +25,23 @@ def "nur lint" [] {
     cargo-org clippy --workspace --all-targets -- -D warnings
 }
 
-# The Rust tests.
+# The Rust tests, then the core alone, without any built-in plugin.
 def "nur test" [] {
     cargo-org test --workspace
+    cargo-org test -p lsdocs --no-default-features
+}
+
+# Build tests/site (the sample site) into tests/site/site.
+def "nur sample" [] {
+    cargo-org run --quiet --package lsdocs -- build --config tests/site/lsdocs.toml
+}
+
+# Re-record the sample site's output snapshots after an intended change.
+# Read the new snapshots before committing them.
+def "nur snapshots" [] {
+    with-env {INSTA_UPDATE: "always"} {
+        cargo-org test --quiet --package lsdocs --test sample_site
+    }
 }
 
 # Fails if a crate of the organization is built twice (two sources, or a

@@ -12,6 +12,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # The host and CLI alone: no built-in plugin, so no plugin repository is
+  # fetched. Fast feedback on the core.
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: jdx/mise-action@v2
+      - run: nur fmt --check
+      - run: cargo clippy -p lsdocs-host -p lsdocs --no-default-features --all-targets -- -D warnings
+      - run: cargo test -p lsdocs-host -p lsdocs --no-default-features
+
+  # Everything, with the built-in plugins: end-to-end builds in-process,
+  # over stdio and over a pipe.
   ci:
     name: ci (${{ matrix.os }})
     strategy:
@@ -22,5 +36,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+      # apidoc-clang's tests load libclang (Windows and macOS runners have it).
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
       - uses: jdx/mise-action@v2
+      # apidoc-rust runs rustdoc's JSON output with this nightly.
+      - run: rustup toolchain install nightly-2026-11-14 --profile minimal
       - run: nur ci

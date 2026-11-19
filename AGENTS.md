@@ -43,3 +43,35 @@ shows them. `nur ci` runs what CI runs: run it before committing. Tools:
 - Licensing: `Apache-2.0 OR MIT`. Nothing is published.
 - Record what is left open in README.md's TODO section, and what the code
   does not do (or does differently) under Known limitations.
+
+## This repository
+
+| Path | What |
+|---|---|
+| `crates/host` | Plugin startup/shutdown, the build pipeline, the cache (`.lsdocs-cache/`, `src/cache.rs`), id and link normalization (`src/normalize.rs`). |
+| `crates/cli` | The `lsdocs` binary (`build`, `serve`, `init`, hidden `plugin <name>`). End-to-end tests live here. |
+| `tests/site` | The sample site the end-to-end snapshot test builds (`nur sample`, `nur snapshots`). |
+| `examples/plugins/txt-parser` | A plugin written from `spec/wire.md` alone (standard-library Python, no SDK); `crates/cli/tests/no_sdk_plugin.rs` builds a site with it. |
+| `ROADMAP.md`, `HISTORY.md` | The plan, open decisions, the core's and the organization's TODO list; the record of phases 0-9. |
+
+- Every built-in plugin is a default feature of `crates/cli`, named after
+  its builtin; `nur test` also runs `cargo test -p lsdocs
+  --no-default-features` (the core without plugins). Tests that need
+  plugins are gated on those features.
+- Builds use a cache in `.lsdocs-cache/`; pass `--no-cache` when timing
+  builds. `lsdocs serve` (`crates/cli/src/serve.rs`) rebuilds through a
+  long-lived `lsdocs_host::Session`.
+- Snapshots (`crates/cli/tests/snapshots/`): `nur snapshots` after an
+  intended change to rendered output; read the new snapshots before
+  accepting them.
+- `apidoc-rust`'s and `apidoc-clang`'s builtins need a nightly
+  (`rustup toolchain install nightly-2026-11-14 --profile minimal`) and
+  libclang at run time for the tests that use them.
+
+### Testing gotchas
+
+- End-to-end tests in `crates/cli/tests/` drive the real `lsdocs` binary
+  and compare in-process, stdio and pipe builds byte for byte.
+- `crates/cli/tests/serve.rs` runs `lsdocs serve --port 0` and reads its
+  log for the port. Keep reading a child's stderr until it exits: closing
+  the pipe makes the child's next `eprintln!` panic.

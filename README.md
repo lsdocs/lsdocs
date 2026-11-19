@@ -1,8 +1,29 @@
 # lsdocs
 
-Part of [lsdocs](https://github.com/lsdocs), a static-site generator whose
-parsers, transformers and renderers are plugins.
+A static-site generator whose parsers, transformers and renderers are
+**plugins** talking to a **host** over an LSP-style protocol: msgpack-rpc
+messages, length-prefixed, over stdio or a named pipe / unix socket.
+First-party plugins also run in-process, with no serialization. Plugins
+can be written in Rust, Python or Node.js.
+
+This repository holds the host and the `lsdocs` command line tool
+(`build`, `serve`, `init`); the protocol, the SDKs, the parsers and the
+other plugins are the organization's other repositories
+(https://github.com/lsdocs; the map is in ROADMAP.md, "The split").
+Documentation: https://lsdocs.github.io.
+
+The built-in plugins are default features of the `lsdocs` crate, one per
+builtin (`parser-markdown`, `render-html`, `apidoc-python`, ...); without
+them (`--no-default-features`) lsdocs builds with none.
 
 ## Known limitations
 
+- No restart policy: a plugin that fails to start, or dies, fails the
+  build.
+- `lsdocs serve` reloads a theme directory or its overrides only after a
+  restart (or a change under `.config/`).
+
 ## TODO
+
+The open items of the host and the CLI, and the organization's, are in
+ROADMAP.md's TODO list.

@@ -1,0 +1,39 @@
+# A small site exercising every first-party feature. Build it with
+# `nur sample`; its output is snapshot-tested in crates/cli/tests/sample_site.rs.
+
+[site]
+title = "lsdocs sample"
+# Absolute, so render-html writes sitemap.xml.
+base_url = "https://example.com/sample/"
+
+[[plugins]]
+name = "markdown"
+builtin = "parser-markdown"
+
+[[plugins]]
+name = "rst"
+builtin = "parser-rst"
+
+[[plugins]]
+name = "sphinx"
+builtin = "sphinx-addons"
+
+[[plugins]]
+name = "toc"
+builtin = "transform-toc"
+
+[[plugins]]
+name = "links"
+builtin = "transform-links"
+
+[[plugins]]
+name = "nav"
+builtin = "transform-nav"
+
+[[plugins]]
+name = "highlight"
+builtin = "transform-highlight"
+
+[[plugins]]
+name = "html"
+builtin = "render-html"

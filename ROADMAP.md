@@ -801,9 +801,36 @@ by settings. Met.
 
 ---
 
+## The split (2026-11-19)
+
+The monorepo (gitlab.com/2bndy5/lsdocs, kept as an archive) was split into
+the repositories of the GitHub organization
+[lsdocs](https://github.com/lsdocs), for faster CI and smaller working
+sets (design: `docs/superpowers/specs/2026-11-19-repo-split-design.md`
+there). Each repository depends only on those above it, through Cargo git
+dependencies (nothing is published); its README has its Known limitations
+and TODO.
+
+| Repository | Holds |
+|---|---|
+| lsdocs-doctree | the document tree |
+| lsdocs-protocol | `config`, `protocol`, the spec, schemas and fixtures |
+| lsdocs-plugin-sdk | `rpc`, the Rust SDK, `plugin-sdk-bindings`, the Python and Node.js SDKs |
+| lsdocs-rst | `lsdocs-rst`, `parser-rst`, its Python and Node.js bindings |
+| lsdocs-markdown | `parser-markdown` |
+| lsdocs-apidoc | the API documentation framework |
+| lsdocs-apidoc-python, -typescript, -rust, -clang | the language packages |
+| lsdocs-sphinx-addons, lsdocs-extras, lsdocs-render-html, lsdocs-transform-toc, -links, -nav, -highlight | one plugin each |
+| lsdocs (this one) | the host, the CLI and its end-to-end tests, this roadmap |
+| lsdocs-bench | the benchmarks |
+| lsdocs.github.io | the documentation site |
+
 ## TODO list
 
 Things left open along the way, by area. The phases above may pick them up.
+Since the split into repositories (below, "The split"), each repository's
+README keeps its own TODO and Known limitations; this list keeps the
+core's (host, CLI) and the organization's.
 
 ### Protocol and host
 - [ ] Transformers receive whole documents; send only the subtrees a
@@ -812,115 +839,32 @@ Things left open along the way, by area. The phases above may pick them up.
       once instead (an open decision, below).
 - [ ] No restart policy: a plugin that fails to start, or dies, fails the
       build.
-- [ ] Node.js binding: context events (logs, progress, diagnostics) reach
-      the host when the handler finishes, not as they happen.
+- Node.js binding: context events arriving late: moved to
+  [lsdocs-plugin-sdk](https://github.com/lsdocs/lsdocs-plugin-sdk).
 
 ### `lsdocs-rst` bindings
-Their known limitations are listed in each package's README
-(`bindings/rst/python/README.md`, `bindings/rst/node/README.md`); keep
-those lists current. To fix:
-- [ ] Python: exceptions from extensions are collected per `Parser`, so
-      two threads parsing with one `Parser` at once can get each other's
-      exception. Collect them per `parse()` call.
-- [ ] Both: extensions can't be async (Node.js) or run on the calling
-      thread's context (Python directives run on a worker thread).
+Moved to [lsdocs-rst](https://github.com/lsdocs/lsdocs-rst) (its README's TODO
+and Known limitations sections), when the workspace was split.
 
 ### Plugin SDK bindings
-- [ ] `TypedDict`s (Python) and `.d.ts` types (Node.js) generated from
-      `schema/` instead of written by hand, and type-checked against the
-      fixtures.
-- [ ] The binding packages declare their protocol version (now a string)
-      in their package metadata.
-- [ ] Free-threaded Python builds: never tried; consider a higher default
-      `max_concurrency` there.
+Moved to [lsdocs-plugin-sdk](https://github.com/lsdocs/lsdocs-plugin-sdk) (its README's TODO
+and Known limitations sections), when the workspace was split.
 
 ### `lsdocs-rst`
-- [ ] `include :parser:` is reported as unsupported; docutils' standard
-      include files (`<isonum.txt>`, `<s5defs.txt>`, ...) are not bundled
-      (the path goes to the loader as written).
-- [ ] `:encoding:` accepts every name Python knows, but only UTF-8
-      (`utf-8-sig` too), Latin-1 and ASCII decode; others are an error.
-- [ ] docutils prints `line="True"` for messages it reports with
-      `line=None`; reproduced for the `class` directive's error only.
-- [ ] `csv-table` cells: docutils numbers each cell's lines from 0, with
-      the table's source; lsdocs-rst keeps each line's real origin. Only
-      visible in messages about cell content.
-- [ ] Absolute `include` paths: docutils makes them relative to the
-      working directory; lsdocs-rst keeps them absolute. Expected trees for
-      includes from subdirectories differ between Windows and other
-      systems (path separators), so the conformance cases avoid them.
-- [ ] A `.. end of inclusion from "x"` comment without an `include` makes
-      docutils crash; lsdocs-rst ignores it.
-- [ ] RCS keyword cleaning (docinfo) matches case-insensitively only for
-      ASCII; Python's `re.IGNORECASE` also folds a few non-ASCII letters.
-- [ ] `figure :figwidth: image`: docutils turns the URI into a path with
-      `url2pathname` (percent-decoding); lsdocs-rst uses the URI as is.
-- [ ] Messages for `:url:` failures are close to Python's, not identical.
-- [ ] `nur fuzz rst` runs without file access, so includes are not fuzzed;
-      add a mode with generated include files.
-- [ ] Settings not supported yet: `smart_quotes` (and
-      `smartquotes_locales`), `character_level_inline_markup`,
-      `language_code` (labels and bibliographic field names are English),
-      `root_prefix` (absolute include paths), `syntax_highlight` (`code`
-      blocks are always as with `none`), `expose_internals`, and the
-      `Decorations` settings (`generator`, `datestamp`, `source_link`,
-      `source_url`).
-- [ ] PEP and RFC references in plain text match ASCII digits only;
-      Python's `\d` also matches other Unicode decimal digits.
-- [ ] The XML writer doesn't check raw XML for well-formedness (docutils
-      warns about invalid raw XML).
-- [ ] Report docutils' `TargetNotes` infinite loop upstream: a paragraph
-      with an embedded-URI reference and its own target, plus
-      `target-notes`.
+Moved to [lsdocs-rst](https://github.com/lsdocs/lsdocs-rst) (its README's TODO
+and Known limitations sections), when the workspace was split.
 
 ### `parser-rst`
-- [x] Take docutils settings from `docutils.conf` (Phase 13).
-- [ ] Its `docutils.conf` reader's known differences from docutils are
-      listed in `plugins/parser-rst/README.md`; keep that list current.
-- [ ] Inline semantics are lost: `subscript`, `superscript`,
-      `abbreviation`, `acronym` and `inline` with classes become their
-      text; `title_reference` becomes emphasis. The inline `custom`
-      convention `sphinx-addons` uses (`inline: true`, `html_tag`) would
-      do.
-- [ ] Tables lose cell spans (`morecols`, `morerows`) and stub columns; the
-      doctree's tables have neither.
-- [ ] Images lose `width`, `height`, `scale` and `align`; figures lose
-      `figwidth` and `align`.
-- [ ] Topic and sidebar titles become bold paragraphs; nested line blocks
-      are indented with no-break spaces.
-- [ ] Option values of unknown directives are kept as strings.
-- [ ] Diagnostics about included files have no span.
-
-- [ ] Task lists (`- [ ] item`, `- [x] item`) in reStructuredText: a
-      docutils-style extension, so both parsers have them (Markdown's come
-      from pulldown-cmark).
+Moved to [lsdocs-rst](https://github.com/lsdocs/lsdocs-rst) (its README's TODO
+and Known limitations sections), when the workspace was split.
 
 ### `sphinx-addons` and syntax extensions
-- [ ] The Python and Node.js plugin SDKs cannot declare syntax yet
-      (`Plugin::syntax` is Rust only).
-- [ ] Markdown: MyST's colon fences (`:::{name}`) are not read
-      (pulldown-cmark has no hook for them), nor MyST's `(label)=`
-      targets. Directive content is parsed on its own, so it cannot use
-      the page's link reference definitions or footnotes.
-- [ ] Documents are found by extension (`.rst`, `.rest`, `.md`,
-      `.markdown`) for `doc` and `toctree`, since a transformer does not
-      know which files parsers took.
-- [ ] Not supported: `literalinclude`'s `:pyobject:` and `:diff:`, encodings
-      other than UTF-8; compound keys in `kbd` (`Ctrl+C` is one key);
-      several terms for one glossary entry (in reStructuredText the
-      content is a definition list); `conf.py` settings that change
-      parsing (`default_role`, `rst_prolog` / `rst_epilog`, the
-      `|version|` and `|release|` substitutions).
+Moved to [lsdocs-sphinx-addons](https://github.com/lsdocs/lsdocs-sphinx-addons) (its README's TODO
+and Known limitations sections), when the workspace was split.
 
 ### `extras`
-Built-in content features that are neither docutils' nor Sphinx's
-(`plugins/extras`, crate `lsdocs-extras-plugin`; decided after Phase 13:
-content tabs moved there from `sphinx-addons`, since `tab-set` and
-`tab-item` come from the third-party sphinx-design extension, not
-Sphinx). Planned:
-- [ ] Inline icons (a role).
-- [ ] Admonition overrides and additions (new kinds, custom titles and
-      icons).
+Moved to [lsdocs-extras](https://github.com/lsdocs/lsdocs-extras) (its README's TODO
+and Known limitations sections), when the workspace was split.
 
 ### Plugins to write
 - [ ] `ext-ref`: references to other sites' objects and labels, read from
@@ -930,28 +874,13 @@ Sphinx). Planned:
       Sphinx.
 
 ### Rendering
-- [ ] `render-html` draws `custom` nodes as an empty `div` with the kind as
-      its class, so the content of unknown directives (`mermaid` and the
-      like) is not shown unless a transformer handles it.
-- [ ] `render-html` loads its theme (and overrides) once per session, so
-      `lsdocs serve` shows edits to a theme directory only after a
-      restart (or a change under `.config/`). Report the theme's files as
-      render dependencies, or reload the theme when they change.
-- [ ] Old hashed theme assets accumulate in the output directory across
-      separate builds and `serve` restarts (`crates/host/src/lib.rs`
-      prunes only within one `Session`). Keep a manifest of written
-      assets in `.lsdocs-cache/` and prune against it.
-- [ ] The `default` theme's social icons are a few generic ones drawn for
-      it (`link`, `mail`, `rss`, `chat`, `code`) or an image; no brand
-      icons (GitHub, Mastodon, ...) yet, which need a licensed icon set.
-- [ ] Code blocks' `data-lines` (highlighted lines) and `data-linenos`
-      are not drawn by the `default` theme: CSS cannot address a line of a
-      `pre`. Needs per-line markup from the body writer, or a script.
+Moved to [lsdocs-render-html](https://github.com/lsdocs/lsdocs-render-html) (its README's TODO
+and Known limitations sections), when the workspace was split.
 
 ### Docs
-- [ ] The docs site names `spec/wire.md` without linking to it, since pages
-      cannot link outside the source directory. Publish the spec as a page
-      (or generate one from it) and link it.
+Moved to [lsdocs.github.io](https://github.com/lsdocs/lsdocs.github.io) (its README's TODO
+and Known limitations sections), when the workspace was split.
+
 
 ## Open decisions
 
