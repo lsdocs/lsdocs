@@ -115,13 +115,6 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <main>
 <section id="lsdocs-sample-site">
 <h1>lsdocs sample site <a class="lsd-anchor" href="#lsdocs-sample-site" aria-label="Link to this section">#</a></h1>
-<div class="lsd-toc"><ul>
-<li><p><a href="#what-s-inside">What&#39;s inside</a></p>
-</li>
-<li><p><a href="#status">Status</a></p>
-</li>
-</ul>
-</div>
 <p>This site shows what the first-party plugins produce. Start with the
 <a href="guide/getting-started.html">getting started guide</a> or jump to the
 <a href="reference/cli.html#commands">CLI reference</a>.</p>

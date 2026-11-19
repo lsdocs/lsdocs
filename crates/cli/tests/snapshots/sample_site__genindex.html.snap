@@ -115,15 +115,6 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <main>
 <section id="genindex">
 <h1>Index <a class="lsd-anchor" href="#genindex" aria-label="Link to this section">#</a></h1>
-<div class="lsd-toc"><ul>
-<li><p><a href="#d">D</a></p>
-</li>
-<li><p><a href="#p">P</a></p>
-</li>
-<li><p><a href="#s">S</a></p>
-</li>
-</ul>
-</div>
 <section id="d">
 <h2>D <a class="lsd-anchor" href="#d" aria-label="Link to this section">#</a></h2>
 <ul>

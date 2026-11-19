@@ -115,17 +115,6 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <main>
 <section id="cli-reference">
 <h1>CLI reference <a class="lsd-anchor" href="#cli-reference" aria-label="Link to this section">#</a></h1>
-<div class="lsd-toc"><ul>
-<li><p><a href="#commands">Commands</a></p>
-<ul>
-<li><p><a href="#lsdocs-build">lsdocs build</a></p>
-</li>
-<li><p><a href="#lsdocs-init">lsdocs init</a></p>
-</li>
-</ul>
-</li>
-</ul>
-</div>
 <section id="commands">
 <h2>Commands <a class="lsd-anchor" href="#commands" aria-label="Link to this section">#</a></h2>
 <dl class="lsd-definition-list">

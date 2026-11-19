@@ -115,11 +115,6 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <main>
 <section id="rst-page">
 <h1>reStructuredText <a class="lsd-anchor" href="#rst-page" aria-label="Link to this section">#</a></h1>
-<div class="lsd-toc"><ul>
-<li><p><a href="#its-own-section">Its own section</a></p>
-</li>
-</ul>
-</div>
 <p>This page is parsed by <code>parser-rst</code>. It links to the
 <a href="../guide/configuration.html#config">configuration guide</a> by label, and to <a href="#its-own-section">its own
 section</a> by title.</p>

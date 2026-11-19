@@ -98,6 +98,11 @@ fn build_site(
     write_content(&site);
     let config_path = site.join("lsdocs.toml");
     write(&config_path, &config(transport));
+    // The inline list is off by default; these tests look for it.
+    write(
+        &site.join(".config/lsdocs/toc/settings.toml"),
+        "inline = true\n",
+    );
     let config_arg = config_path.to_string_lossy().into_owned();
     let mut args = vec!["build", "--config", config_arg.as_str()];
     args.extend_from_slice(extra_args);
@@ -348,16 +353,18 @@ fn config_file_changes_invalidate_cached_results() {
         assert!(output.status.success(), "{}", stderr(&output));
         std::fs::read_to_string(site.join("site/page.html")).unwrap()
     };
-    // The toc lists `Two` (depth 3, the default): a link besides the
-    // heading's own anchor.
+    // The inline toc is off by default; with it on, it lists `Two` (depth 3,
+    // the default): a link besides the heading's own anchor.
     let toc = |page: &str| page.matches("href=\"#two\"").count() == 2;
-    assert!(toc(&build()));
+    assert!(!toc(&build()));
     // A settings file appearing is a change of settings.
     let settings = site.join(".config/lsdocs/toc/settings.toml");
-    write(&settings, "depth = 2\n");
-    assert!(!toc(&build()));
+    write(&settings, "inline = true\n");
+    assert!(toc(&build()));
     // And so is editing it.
-    write(&settings, "depth = 3\n");
+    write(&settings, "inline = true\ndepth = 2\n");
+    assert!(!toc(&build()));
+    write(&settings, "inline = true\ndepth = 3\n");
     assert!(toc(&build()));
     // An unknown setting fails the build, naming the file.
     write(&settings, "detph = 2\n");

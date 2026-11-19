@@ -115,13 +115,6 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <main>
 <section id="config">
 <h1>Configuring a site <a class="lsd-anchor" href="#config" aria-label="Link to this section">#</a></h1>
-<div class="lsd-toc"><ul>
-<li><p><a href="#options">Options</a></p>
-</li>
-<li><p><a href="#plugins">Plugins</a></p>
-</li>
-</ul>
-</div>
 <blockquote>
 <p>Settings live in <code>lsdocs.toml</code>, next to the <code>docs/</code> directory.</p>
 </blockquote>

@@ -682,9 +682,14 @@ Decisions:
       cheap.
 
 ### 13b: Data for themes
-- [ ] The table of contents as data for templates (a sidebar), not only
-      inserted into the content: `transform-toc` writes it to metadata as
-      well, or the renderer builds it.
+- [x] The table of contents as data for templates (a sidebar), not only
+      inserted into the content: `transform-toc` writes it to the `toc`
+      metadata (`[{id, title, level, children}]`, the level 1 page title
+      left out; no `toc` when nothing is listed). The inline list became
+      opt-in (`inline = true`, default `false`), and the sample site stays
+      on the default, so its snapshots lost their inline lists. The tests
+      that look for the inline list set `inline = true`. The Python and
+      Node ports do the same.
 - [ ] Search: an index written at `render/transform/all` (pages, sections, text), and
       a client-side search the theme can use.
 - [ ] Content components themes style: content tabs, buttons, icons and

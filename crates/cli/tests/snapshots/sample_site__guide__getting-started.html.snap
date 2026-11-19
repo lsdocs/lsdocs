@@ -115,17 +115,6 @@ dd { margin: 0 0 0.5rem 1.5rem; }
 <main>
 <section id="getting-started">
 <h1>Getting started <a class="lsd-anchor" href="#getting-started" aria-label="Link to this section">#</a></h1>
-<div class="lsd-toc"><ul>
-<li><p><a href="#install">Install</a></p>
-</li>
-<li><p><a href="#create-a-site">Create a site</a></p>
-</li>
-<li><p><a href="#build">Build</a></p>
-</li>
-<li><p><a href="#build-1">Build</a></p>
-</li>
-</ul>
-</div>
 <p>Install lsdocs, create a site, and build it. Back to <a href="../index.html">home</a>.</p>
 <section id="install">
 <h2>Install <a class="lsd-anchor" href="#install" aria-label="Link to this section">#</a></h2>
