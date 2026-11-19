@@ -708,6 +708,26 @@ Decisions:
       the `asset()` template function; `asset_importmap()` maps JavaScript
       modules' plain URLs to their hashed ones, so modules keep plain
       relative imports. Not minified (the files are small).
+- [x] The `default` theme's scripts: TypeScript in
+      `themes/default/src/` (TypeScript 6.0.3 pinned, not 7: the plan
+      named 6), compiled by `tsc` alone to `assets/js/` (checked in;
+      `nur gen theme`, and `nur test theme` fails when it is stale).
+      `@preact/signals-core` 1.14.5 is vendored from npm into
+      `src/vendor/` (its `.mjs`, types and LICENSE; the source map
+      comment dropped, since the map is not shipped) and copied beside
+      the modules. Elements: `lsd-palette` (cycles auto, light, dark),
+      `lsd-copy`, `lsd-tabs` (WAI-ARIA tabs; linked by label, keeping the
+      clicked set in place on the screen), `lsd-toc` (wraps the toc
+      sidebar, `display: contents`; marks `aria-current="true"` and
+      `lsd-active`). Decisions (mine): the labels the scripts show come
+      from the theme's `labels` table as JSON in the page (`lsd-labels`;
+      needs minijinja's `json` feature, for `tojson`); stored state is
+      written only when it changes, never at load, so a site's default
+      scheme can change later; the copy button falls back to selecting
+      the code and `execCommand("copy")` where the Clipboard API is
+      missing or refused (plain HTTP); the toc's fold is the page's
+      `scroll-padding-top`, and at the end of the page the last section
+      is current (the last ones may never reach the fold).
 
 ### 13b: Data for themes
 - [x] The table of contents as data for templates (a sidebar), not only
