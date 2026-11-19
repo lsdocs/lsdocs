@@ -2,6 +2,18 @@
 //! script, and edits, new files and deleted files are rebuilt and announced
 //! on the reload stream.
 
+// These tests build sites with the built-in plugins.
+#![cfg(all(
+    feature = "extras",
+    feature = "parser-markdown",
+    feature = "parser-rst",
+    feature = "render-html",
+    feature = "sphinx-addons",
+    feature = "transform-highlight",
+    feature = "transform-links",
+    feature = "transform-nav",
+    feature = "transform-toc"
+))]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::io::{BufRead, BufReader, Read, Write};

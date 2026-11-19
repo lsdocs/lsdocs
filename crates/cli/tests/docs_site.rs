@@ -1,6 +1,22 @@
 //! The documentation site (`docs/`, built with lsdocs) builds without
 //! warnings, so broken links and malformed pages fail the tests.
 
+// These tests build sites with the built-in plugins.
+#![cfg(all(
+    feature = "extras",
+    feature = "parser-markdown",
+    feature = "parser-rst",
+    feature = "render-html",
+    feature = "sphinx-addons",
+    feature = "transform-highlight",
+    feature = "transform-links",
+    feature = "transform-nav",
+    feature = "transform-toc",
+    feature = "apidoc-clang",
+    feature = "apidoc-python",
+    feature = "apidoc-rust",
+    feature = "apidoc-typescript"
+))]
 #![allow(clippy::unwrap_used)]
 
 use std::process::Command;

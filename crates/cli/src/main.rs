@@ -99,16 +99,25 @@ fn builtins() -> Builtins {
     let builtins = builtins.with("apidoc-rust", lsdocs_apidoc_rust::plugin);
     #[cfg(feature = "apidoc-typescript")]
     let builtins = builtins.with("apidoc-typescript", lsdocs_apidoc_typescript::plugin);
+    #[cfg(feature = "parser-markdown")]
+    let builtins = builtins.with("parser-markdown", lsdocs_parser_markdown::plugin);
+    #[cfg(feature = "parser-rst")]
+    let builtins = builtins.with("parser-rst", lsdocs_parser_rst::plugin);
+    #[cfg(feature = "sphinx-addons")]
+    let builtins = builtins.with("sphinx-addons", lsdocs_sphinx_addons::plugin);
+    #[cfg(feature = "extras")]
+    let builtins = builtins.with("extras", lsdocs_extras_plugin::plugin);
+    #[cfg(feature = "transform-highlight")]
+    let builtins = builtins.with("transform-highlight", lsdocs_transform_highlight::plugin);
+    #[cfg(feature = "transform-links")]
+    let builtins = builtins.with("transform-links", lsdocs_transform_links::plugin);
+    #[cfg(feature = "transform-nav")]
+    let builtins = builtins.with("transform-nav", lsdocs_transform_nav::plugin);
+    #[cfg(feature = "transform-toc")]
+    let builtins = builtins.with("transform-toc", lsdocs_transform_toc::plugin);
+    #[cfg(feature = "render-html")]
+    let builtins = builtins.with("render-html", lsdocs_render_html::plugin);
     builtins
-        .with("parser-markdown", lsdocs_parser_markdown::plugin)
-        .with("parser-rst", lsdocs_parser_rst::plugin)
-        .with("sphinx-addons", lsdocs_sphinx_addons::plugin)
-        .with("extras", lsdocs_extras_plugin::plugin)
-        .with("transform-highlight", lsdocs_transform_highlight::plugin)
-        .with("transform-links", lsdocs_transform_links::plugin)
-        .with("transform-nav", lsdocs_transform_nav::plugin)
-        .with("transform-toc", lsdocs_transform_toc::plugin)
-        .with("render-html", lsdocs_render_html::plugin)
 }
 
 fn main() -> ExitCode {
@@ -322,4 +331,65 @@ async fn serve_builtin(name: &str) -> Result<ExitCode, String> {
         .await
         .map_err(|e| e.to_string())?;
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[cfg(all(
+        feature = "apidoc-clang",
+        feature = "apidoc-python",
+        feature = "apidoc-rust",
+        feature = "apidoc-typescript",
+        feature = "extras",
+        feature = "parser-markdown",
+        feature = "parser-rst",
+        feature = "render-html",
+        feature = "sphinx-addons",
+        feature = "transform-highlight",
+        feature = "transform-links",
+        feature = "transform-nav",
+        feature = "transform-toc",
+    ))]
+    fn builtins_follow_features() {
+        assert_eq!(
+            super::builtins().names(),
+            [
+                "apidoc-c",
+                "apidoc-cpp",
+                "apidoc-python",
+                "apidoc-rust",
+                "apidoc-typescript",
+                "extras",
+                "parser-markdown",
+                "parser-rst",
+                "render-html",
+                "sphinx-addons",
+                "transform-highlight",
+                "transform-links",
+                "transform-nav",
+                "transform-toc",
+            ]
+        );
+    }
+
+    #[test]
+    fn no_features_no_builtins() {
+        #[cfg(not(any(
+            feature = "apidoc-clang",
+            feature = "apidoc-python",
+            feature = "apidoc-rust",
+            feature = "apidoc-typescript",
+            feature = "extras",
+            feature = "parser-markdown",
+            feature = "parser-rst",
+            feature = "render-html",
+            feature = "sphinx-addons",
+            feature = "transform-highlight",
+            feature = "transform-links",
+            feature = "transform-nav",
+            feature = "transform-toc",
+        )))]
+        assert!(super::builtins().names().is_empty());
+    }
 }

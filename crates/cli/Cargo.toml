@@ -18,29 +18,54 @@ workspace = true
 clap.workspace = true
 lsdocs-config.workspace = true
 lsdocs-host.workspace = true
-lsdocs-parser-markdown.workspace = true
-lsdocs-parser-rst.workspace = true
+lsdocs-parser-markdown = { workspace = true, optional = true }
+lsdocs-parser-rst = { workspace = true, optional = true }
 lsdocs-plugin-sdk.workspace = true
-lsdocs-render-html.workspace = true
-lsdocs-transform-highlight.workspace = true
-lsdocs-transform-links.workspace = true
-lsdocs-sphinx-addons.workspace = true
-lsdocs-extras-plugin.workspace = true
+lsdocs-render-html = { workspace = true, optional = true }
+lsdocs-transform-highlight = { workspace = true, optional = true }
+lsdocs-transform-links = { workspace = true, optional = true }
+lsdocs-sphinx-addons = { workspace = true, optional = true }
+lsdocs-extras-plugin = { workspace = true, optional = true }
 lsdocs-apidoc-python = { workspace = true, optional = true }
 lsdocs-apidoc-typescript = { workspace = true, optional = true }
 lsdocs-apidoc-rust = { workspace = true, optional = true }
 lsdocs-apidoc-clang = { workspace = true, optional = true }
-lsdocs-transform-nav.workspace = true
-lsdocs-transform-toc.workspace = true
+lsdocs-transform-nav = { workspace = true, optional = true }
+lsdocs-transform-toc = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "signal", "sync", "time", "fs"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 
 [features]
-# The API documentation builtins. `apidoc-python` and `apidoc-typescript`
-# raise the MSRV to their plugins' (1.97); without them lsdocs builds on
-# the workspace's.
-default = ["apidoc-clang", "apidoc-python", "apidoc-rust", "apidoc-typescript"]
+# Every builtin is on by default. The API documentation builtins
+# `apidoc-python` and `apidoc-typescript` raise the MSRV to their plugins'
+# (1.97); without them lsdocs builds on the workspace's.
+default = [
+    "apidoc-clang",
+    "apidoc-python",
+    "apidoc-rust",
+    "apidoc-typescript",
+    "extras",
+    "parser-markdown",
+    "parser-rst",
+    "render-html",
+    "sphinx-addons",
+    "transform-highlight",
+    "transform-links",
+    "transform-nav",
+    "transform-toc",
+]
+# Each built-in plugin, named as `builtin = "<name>"` names it. Without
+# them lsdocs builds and its unit tests run with no plugins at all.
+extras = ["dep:lsdocs-extras-plugin"]
+parser-markdown = ["dep:lsdocs-parser-markdown"]
+parser-rst = ["dep:lsdocs-parser-rst"]
+render-html = ["dep:lsdocs-render-html"]
+sphinx-addons = ["dep:lsdocs-sphinx-addons"]
+transform-highlight = ["dep:lsdocs-transform-highlight"]
+transform-links = ["dep:lsdocs-transform-links"]
+transform-nav = ["dep:lsdocs-transform-nav"]
+transform-toc = ["dep:lsdocs-transform-toc"]
 apidoc-python = ["dep:lsdocs-apidoc-python"]
 apidoc-typescript = ["dep:lsdocs-apidoc-typescript"]
 # Needs no more than the workspace's MSRV; using it needs a nightly

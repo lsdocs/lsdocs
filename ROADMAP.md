@@ -60,7 +60,7 @@ Today, plus what the phases below add (marked *planned*):
 ```
 lsdocs/
   crates/
-    doctree/  config/  protocol/  rpc/  plugin-sdk/  sdk-dynamic/  host/  cli/
+    doctree/  config/  protocol/  rpc/  plugin-sdk/  plugin-sdk-bindings/  host/  cli/
     rst/            lsdocs-rst: the reStructuredText library
     apidoc/         API documentation framework (and apidoc-plugin/)
   plugins/

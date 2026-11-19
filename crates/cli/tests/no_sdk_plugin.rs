@@ -3,6 +3,18 @@
 //! Building a site with it checks that the spec is enough to implement the
 //! protocol. Skipped when no Python is installed.
 
+// These tests build sites with the built-in plugins.
+#![cfg(all(
+    feature = "extras",
+    feature = "parser-markdown",
+    feature = "parser-rst",
+    feature = "render-html",
+    feature = "sphinx-addons",
+    feature = "transform-highlight",
+    feature = "transform-links",
+    feature = "transform-nav",
+    feature = "transform-toc"
+))]
 #![allow(clippy::unwrap_used)]
 
 use std::path::PathBuf;
