@@ -140,6 +140,36 @@ fn read_tree(dir: &Path) -> BTreeMap<String, Vec<u8>> {
 }
 
 #[test]
+fn generated_pages_have_no_edit_link() {
+    // genindex.html is generated (sphinx-addons' `parse/transform/all`):
+    // the host marks it `generated`, so the default theme links no source
+    // file to edit.
+    let site = temp_dir("generated");
+    write_content(&site);
+    let config_path = site.join("lsdocs.toml");
+    write(&config_path, &config(None));
+    write(
+        &site.join(".config/lsdocs/html/settings.toml"),
+        "theme_settings = { edit_url = \"https://example.com/edit/{path}\" }
+",
+    );
+    let config_arg = config_path.to_string_lossy().into_owned();
+    let output = lsdocs(&["build", "--config", config_arg.as_str()]);
+    assert!(output.status.success(), "{}", stderr(&output));
+    let files = read_tree(&site.join("site"));
+    let _ = std::fs::remove_dir_all(&site);
+    let page = |path: &str| String::from_utf8(files[path].clone()).unwrap();
+    let index = page("index.html");
+    assert!(
+        index.contains("href=\"https://example.com/edit/index.md\""),
+        "{index}"
+    );
+    let genindex = page("genindex.html");
+    assert!(genindex.contains("lsd-article"), "{genindex}");
+    assert!(!genindex.contains("lsd-edit"), "{genindex}");
+}
+
+#[test]
 fn in_process_and_out_of_process_builds_match() {
     let (in_process, _) = build_site("builtin", None, &[]);
     let (stdio, _) = build_site("stdio", Some("stdio"), &[]);

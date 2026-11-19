@@ -686,6 +686,12 @@ async fn run_pipeline(
                     });
                     continue;
                 }
+                // Marked, so themes can tell it has no source file (no
+                // edit link, say).
+                let mut document = document;
+                document
+                    .metadata
+                    .insert("generated".into(), serde_json::Value::Bool(true));
                 new.push(document);
             }
             report

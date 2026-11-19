@@ -700,6 +700,9 @@ Decisions:
       `default` theme only (a directory theme's empty-array defaults say
       nothing about their elements). Labels: English only so far
       (`labels` in `base.html`; other languages fall back to it).
+      Generated documents (from `parse/transform/all`) carry
+      `generated: true` metadata, set by the host (replacing a plugin's
+      value), so the theme gives them no edit link.
 - [x] Assets: written at `render/transform/all` to
       `_lsdocs/<path-stem>.<hash8>.<ext>` (blake3), referred to through
       the `asset()` template function; `asset_importmap()` maps JavaScript
