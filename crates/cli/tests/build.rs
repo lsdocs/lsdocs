@@ -276,6 +276,24 @@ fn the_cache_skips_unchanged_pages() {
     assert!((1..all).contains(&hits(&log)), "{all} vs. {log}");
     let intro = String::from_utf8(third["guide/intro.html"].clone()).unwrap();
     assert!(intro.contains("Changed."), "{intro}");
+    // The search index still lists the cached page (its entry is kept
+    // with its cached render result) and the changed page's new text.
+    let index: serde_json::Value = serde_json::from_slice(&third["_lsdocs/search.json"]).unwrap();
+    let pages: Vec<_> = index["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["url"].as_str().unwrap())
+        .collect();
+    assert_eq!(pages, ["guide/intro.html", "index.html"]);
+    assert_eq!(index["pages"][1]["sections"][1]["title"], "Install");
+    assert!(
+        index["pages"][0]["sections"][0]["text"]
+            .as_str()
+            .unwrap()
+            .starts_with("Changed."),
+        "{index}"
+    );
 
     let (_, log) = build(&["--no-cache"]);
     assert_eq!(hits(&log), 0, "{log}");

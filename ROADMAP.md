@@ -738,8 +738,24 @@ Decisions:
       on the default, so its snapshots lost their inline lists. The tests
       that look for the inline list set `inline = true`. The Python and
       Node ports do the same.
-- [ ] Search: an index written at `render/transform/all` (pages, sections, text), and
-      a client-side search the theme can use.
+- [x] Search: an index written at `render/transform/all` (pages, sections, text), and
+      a client-side search the theme can use. `render/transform/all` only saw
+      pages' metadata, and render results are cached, so the protocol grew an
+      optional `data` on `render` results, handed back as `RenderedPage.data`
+      (cached with the result; additive, version unchanged). render-html's
+      `render` puts the page's sections there when the theme's `theme.toml`
+      says `search = true` (`default` does, `plain` not), and `render_all`
+      writes `_lsdocs/search.json` (not hashed: fetched by name). Every page
+      is indexed, generated ones and pages left out of the navigation too;
+      front matter `search: false` leaves one out. Code blocks are indexed;
+      raw markup and math are not. `<lsd-search>` runs the query in a module
+      worker (`search-worker.js`, self-contained since workers get no import
+      map; its pure functions are exported for the tests): a simple inverted
+      index built on load, words matched by prefix, every word required, title
+      matches above text, one-letter words matched whole only. On the docs
+      site (37 pages, 853 sections) search.json is 199 KB, 47 KB gzipped;
+      a real engine (or a prebuilt, tokenized index) can come later if that
+      grows too much.
 - [ ] Content components themes style: content tabs, buttons, icons and
       emoji, code block titles, copy buttons, highlighted lines. Each needs
       a node kind or a `custom` convention, and Markdown and

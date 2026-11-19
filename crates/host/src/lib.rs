@@ -797,6 +797,8 @@ async fn run_pipeline(
                 source,
                 path,
                 metadata,
+                // Kept only for `render/transform/all`, like the metadata.
+                data: if site { result.data } else { Value::Null },
             });
             report.documents += 1;
         }
