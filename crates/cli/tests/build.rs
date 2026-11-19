@@ -145,7 +145,15 @@ fn in_process_and_out_of_process_builds_match() {
     let (stdio, _) = build_site("stdio", Some("stdio"), &[]);
     let (pipe, _) = build_site("pipe", Some("pipe"), &[]);
 
-    let files: Vec<_> = in_process.keys().map(String::as_str).collect();
+    // The theme's assets, whose names carry hashes, are listed apart.
+    let (assets, files): (Vec<_>, Vec<_>) = in_process
+        .keys()
+        .map(String::as_str)
+        .partition(|path| path.starts_with("_lsdocs/"));
+    assert!(
+        assets.iter().any(|path| path.ends_with(".css")),
+        "{assets:?}"
+    );
     assert_eq!(
         files,
         [
@@ -483,7 +491,11 @@ fn api_site(transport: Option<&str>) -> BTreeMap<String, Vec<u8>> {
 #[test]
 fn api_pages_build_the_same_out_of_process() {
     let in_process = api_site(None);
-    let files: Vec<_> = in_process.keys().map(String::as_str).collect();
+    let files: Vec<_> = in_process
+        .keys()
+        .map(String::as_str)
+        .filter(|path| !path.starts_with("_lsdocs/"))
+        .collect();
     assert_eq!(
         files,
         ["api/py/index.html", "api/py/pkg.html", "index.html"]

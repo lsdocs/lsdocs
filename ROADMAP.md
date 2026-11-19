@@ -680,10 +680,26 @@ Decisions:
       an override extends the original as `theme/<path>`). `site.theme`
       is gone from `lsdocs.toml` (a `theme` key there is an error saying
       where it went), and render-html's `template` setting with it.
-- [ ] Settings every theme should take: palette (light, dark or following
+- [x] Settings every theme should take: palette (light, dark or following
       the system; primary and accent colors), fonts, logo and favicon,
       language and translatable labels, extra CSS and JS, social links,
-      footer text, edit-this-page links.
+      footer text, edit-this-page links. The `default` theme takes them
+      (`scheme`, `primary`, `accent`, `font_text`, `font_code`, `logo`,
+      `favicon`, `language`, `extra_css`, `extra_js`, `social`, `footer`,
+      `edit_url`). Decisions: `primary` and `accent` are a palette name
+      (zensical-ui's colors) or else any CSS color (my call: a site's
+      brand color needs no override); they reach the page as a `style`
+      on `<html>` (`--lsd-primary`, ...), and the scheme as
+      `data-lsd-scheme`, which an inline script sets from `localStorage`
+      (`lsd-scheme`) before first paint. Colors are `light-dark()`
+      pairs; link colors derive from the primary color with relative
+      color syntax where supported. A `url` template filter makes a path
+      from the site root relative to the page (logo, favicon, extra
+      files, social links, the edit link). The element shapes of
+      `extra_css`, `extra_js` and `social` are checked for the built-in
+      `default` theme only (a directory theme's empty-array defaults say
+      nothing about their elements). Labels: English only so far
+      (`labels` in `base.html`; other languages fall back to it).
 - [x] Assets: written at `render/transform/all` to
       `_lsdocs/<path-stem>.<hash8>.<ext>` (blake3), referred to through
       the `asset()` template function; `asset_importmap()` maps JavaScript
@@ -861,6 +877,12 @@ those lists current. To fix:
       `lsdocs serve` shows edits to a theme directory only after a
       restart (or a change under `.config/`). Report the theme's files as
       render dependencies, or reload the theme when they change.
+- [ ] The `default` theme's social icons are a few generic ones drawn for
+      it (`link`, `mail`, `rss`, `chat`, `code`) or an image; no brand
+      icons (GitHub, Mastodon, ...) yet, which need a licensed icon set.
+- [ ] Code blocks' `data-lines` (highlighted lines) and `data-linenos`
+      are not drawn by the `default` theme: CSS cannot address a line of a
+      `pre`. Needs per-line markup from the body writer, or a script.
 
 ### Docs
 - [ ] The docs site names `spec/wire.md` without linking to it, since pages
