@@ -14,6 +14,19 @@ path = "src/main.rs"
 [lints]
 workspace = true
 
+# cargo-binstall: the archives tag.yml attaches to `lsdocs/v<version>`
+# releases (lsdocs/.github's build-bin.yml names them).
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/{ name }/v{ version }/{ name }-{ target }{ archive-suffix }"
+pkg-fmt = "tgz"
+bin-dir = "{ bin }{ binary-ext }"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-fmt = "zip"
+
 [dependencies]
 clap.workspace = true
 lsdocs-config.workspace = true
