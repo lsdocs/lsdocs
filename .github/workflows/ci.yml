@@ -18,7 +18,7 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
     steps:
-      - uses: lsdocs/.github/.github/setup-repo@setup-reusable-ci
+      - uses: lsdocs/.github/.github/setup-repo@main
         with:
           mise-install-args: cargo:nur
       - run: nur fmt --check
@@ -29,7 +29,7 @@ jobs:
   # over stdio and over a pipe. apidoc-clang's tests load libclang (Windows
   # and macOS runners have it).
   ci:
-    uses: lsdocs/.github/.github/workflows/ci.yml@setup-reusable-ci
+    uses: lsdocs/.github/.github/workflows/ci.yml@main
     with:
       apt-packages: libclang-dev
     permissions:
@@ -37,11 +37,11 @@ jobs:
 
   # Each crate on its own rust-version (nur msrv installs the toolchains).
   msrv:
-    uses: lsdocs/.github/.github/workflows/msrv.yml@setup-reusable-ci
+    uses: lsdocs/.github/.github/workflows/msrv.yml@main
     permissions:
       contents: read
 
   deny:
-    uses: lsdocs/.github/.github/workflows/deny.yml@setup-reusable-ci
+    uses: lsdocs/.github/.github/workflows/deny.yml@main
     permissions:
       contents: read
