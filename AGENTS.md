@@ -67,9 +67,9 @@ shows them. `nur ci` runs what CI runs: run it before committing. Tools:
 - Snapshots (`crates/cli/tests/snapshots/`): `nur snapshots` after an
   intended change to rendered output; read the new snapshots before
   accepting them.
-- `apidoc-rust`'s and `apidoc-clang`'s builtins need a nightly
-  (`rustup toolchain install nightly-2026-11-14 --profile minimal`) and
-  libclang at run time for the tests that use them.
+- `apidoc-rust`'s and `apidoc-clang`'s builtins need a nightly (`nur
+  test` installs the one apidoc-rust's `NIGHTLY` names) and libclang at
+  run time for the tests that use them.
 
 ### Testing gotchas
 
