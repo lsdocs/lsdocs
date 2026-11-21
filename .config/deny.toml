@@ -26,6 +26,11 @@ allow = [
     "Zlib",
 ]
 confidence-threshold = 0.9
+# Crates allowed one more license each.
+exceptions = [
+    # Lift when apidoc-python is rewritten in Python (no more ruff crates).
+    { crate = "ruff_unicode_names2", allow = ["Unicode-DFS-2016"] },
+]
 
 [licenses.private]
 # Workspace crates are `publish = false`; their own license is set in Cargo.toml.
