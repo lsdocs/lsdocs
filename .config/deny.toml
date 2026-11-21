@@ -29,6 +29,11 @@ ignore = true
 multiple-versions = "warn"
 wildcards = "deny"
 allow-wildcard-paths = true
+# Proc-macros still on syn 2 (the rest of the graph is on syn 3).
+skip-tree = [
+    { crate = "is-macro@0.3", reason = "ruff_python_ast (apidoc-python); goes away when apidoc-python is rewritten in Python" },
+    { crate = "phf_macros@0.14", reason = "oxc (apidoc-typescript) and ruff_unicode_names2; waits on upstream moving to syn 3" },
+]
 
 [sources]
 unknown-registry = "deny"
