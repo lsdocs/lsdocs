@@ -1,0 +1,55 @@
+# cargo-deny configuration. Run with `cargo deny check`.
+
+[graph]
+all-features = true
+
+[advisories]
+# Advisories from the RustSec database fail the check unless listed here.
+ignore = [
+    # bincode 1.3.3 is unmaintained (not a vulnerability). syntect uses it only
+    # to load the syntax sets built into transform-highlight, never untrusted
+    # input. Lift when syntect (and two-face) stop depending on bincode 1, or
+    # when transform-highlight moves off syntect.
+    { id = "RUSTSEC-2025-0141", reason = "bincode via syntect: trusted embedded dumps only" },
+]
+
+[licenses]
+# Licenses third-party dependencies may use.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.9
+# Crates allowed one more license each.
+exceptions = [
+    # Lift when apidoc-python is rewritten in Python (no more ruff crates).
+    { crate = "ruff_unicode_names2", allow = ["Unicode-DFS-2016"] },
+]
+
+[licenses.private]
+# Workspace crates are `publish = false`; their own license is set in Cargo.toml.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# Proc-macros still on syn 2 (the rest of the graph is on syn 3).
+skip-tree = [
+    # Lift when apidoc-python is rewritten in Python (no more ruff crates).
+    { crate = "is-macro@0.3", reason = "ruff_python_ast (apidoc-python)" },
+    # Lift when oxc (apidoc-typescript) and ruff_unicode_names2 use a phf
+    # whose macros are on syn 3, or when neither is in the graph.
+    { crate = "phf_macros@0.14", reason = "oxc (apidoc-typescript) and ruff_unicode_names2" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-org = { github = ["lsdocs"] }

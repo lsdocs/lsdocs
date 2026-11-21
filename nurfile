@@ -25,8 +25,30 @@ def "nur lint" [] {
     cargo-org clippy --workspace --all-targets -- -D warnings
 }
 
+# Installs the nightly toolchain apidoc-rust runs for rustdoc's JSON output:
+# the NIGHTLY constant in lsdocs-apidoc-rust's src/lib.rs (found through
+# cargo metadata, so it is the version this build uses). "" needs none.
+def nightly []: nothing -> nothing {
+    let manifest = (
+        cargo-org metadata --format-version 1 | from json | get packages
+        | where name == "lsdocs-apidoc-rust" | get 0.manifest_path
+    )
+    let found = (
+        open --raw ($manifest | path dirname | path join src lib.rs)
+        | parse --regex 'pub const NIGHTLY: &str = "(?<version>[^"]*)";'
+    )
+    if ($found | is-empty) {
+        error make --unspanned {msg: $"NIGHTLY not found beside ($manifest)"}
+    }
+    let version = $found.0.version
+    if $version != "" {
+        rustup toolchain install $version --profile minimal --no-self-update
+    }
+}
+
 # The Rust tests, then the core alone, without any built-in plugin.
 def "nur test" [] {
+    nightly
     cargo-org test --workspace
     cargo-org test -p lsdocs --no-default-features
 }
@@ -93,14 +115,21 @@ def "nur unlink" [name?: string] {
     $config | upsert patch $patch | to toml | save -f $file
 }
 
+# A `rust-version` as a number that sorts (major * 1000 + minor).
+def version-key []: string -> int {
+    split row "." | each { into int } | $in.0 * 1000 + $in.1
+}
+
 # Checks each crate on its own `rust-version` (installing the toolchains),
-# without default features, then the workspace on the highest one.
+# without default features, then the workspace, default features, on the
+# highest `rust-version` in the whole dependency graph: the default
+# features pull in the apidoc plugins, whose MSRV is above the workspace's.
 def "nur msrv" [] {
     let groups = (
         cargo-org metadata --no-deps --format-version 1 | from json | get packages
         | select name rust_version | group-by rust_version
         | transpose version crates
-        | sort-by {|g| $g.version | split row "." | each { into int } | $in.0 * 1000 + $in.1 }
+        | sort-by {|g| $g.version | version-key }
     )
     for group in $groups {
         rustup toolchain install $group.version --profile minimal --no-self-update
@@ -108,15 +137,19 @@ def "nur msrv" [] {
         print $"Rust ($group.version): ($names | str join ', ')"
         cargo-org $"+($group.version)" check --no-default-features ...($names | each {|n| [-p $n] } | flatten)
     }
-    let highest = $groups | last | get version
+    let highest = (
+        cargo-org metadata --format-version 1 | from json | get packages
+        | get rust_version | compact | uniq | sort-by { version-key } | last
+    )
+    rustup toolchain install $highest --profile minimal --no-self-update
     print $"Rust ($highest): the workspace, default features"
     cargo-org $"+($highest)" check --workspace
 }
 
-# Licenses, advisories and sources of the dependencies (deny.toml; needs
-# cargo-deny, from mise).
+# Licenses, advisories and sources of the dependencies (.config/deny.toml).
+# mise installs cargo-deny on first use (.config/mise.deny.toml).
 def "nur deny" [] {
-    cargo-org deny check
+    with-env ((org org-env) | insert MISE_ENV deny) { ^mise exec cargo:cargo-deny -- cargo deny check }
 }
 
 # Updates the lockfile's revision of organization crates (all, or one).
