@@ -8,47 +8,40 @@ on:
 
 permissions: {}
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   # The host and CLI alone: no built-in plugin is built. Fast feedback on
   # the core.
   core:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
     steps:
       - uses: lsdocs/.github/.github/setup-repo@setup-reusable-ci
+        with:
+          mise-install-args: cargo:nur
       - run: nur fmt --check
       - run: cargo clippy -p lsdocs-host -p lsdocs --no-default-features --all-targets -- -D warnings
       - run: cargo test -p lsdocs-host -p lsdocs --no-default-features
 
   # Everything, with the built-in plugins: end-to-end builds in-process,
-  # over stdio and over a pipe.
+  # over stdio and over a pipe. apidoc-clang's tests load libclang (Windows
+  # and macOS runners have it).
   ci:
-    name: ci (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      # apidoc-clang's tests load libclang (Windows and macOS runners have it).
-      - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libclang-dev
-      - uses: lsdocs/.github/.github/setup-repo@setup-reusable-ci
-      # apidoc-rust runs rustdoc's JSON output with this nightly.
-      - run: rustup toolchain install nightly-2026-11-14 --profile minimal
-      - run: nur ci
+    uses: lsdocs/.github/.github/workflows/ci.yml@setup-reusable-ci
+    with:
+      apt-packages: libclang-dev
+    permissions:
+      contents: read
 
   # Each crate on its own rust-version (nur msrv installs the toolchains).
   msrv:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: lsdocs/.github/.github/setup-repo@setup-reusable-ci
-      - run: nur msrv
+    uses: lsdocs/.github/.github/workflows/msrv.yml@setup-reusable-ci
+    permissions:
+      contents: read
 
   deny:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: lsdocs/.github/.github/setup-repo@setup-reusable-ci
-      - run: mise exec -- cargo-deny check
+    uses: lsdocs/.github/.github/workflows/deny.yml@setup-reusable-ci
+    permissions:
+      contents: read
