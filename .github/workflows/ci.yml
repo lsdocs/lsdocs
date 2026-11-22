@@ -3,15 +3,30 @@ name: CI
 on:
   push:
     branches: [main]
+    # Files that cannot change a build.
+    paths-ignore: &no-build
+      - "*.md"
+      - "**/CHANGELOG.md"
+      - "LICENSE*"
+      - renovate.json
+      - .gitignore
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore: *no-build
 
 permissions: {}
+
+# A new push to a pull request cancels its previous run; runs on main finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # The host and CLI alone: no built-in plugin is built. Fast feedback on
   # the core.
   core:
+    if: github.event.action != 'ready_for_review'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,6 +44,7 @@ jobs:
   # over stdio and over a pipe. apidoc-clang's tests load libclang (Windows
   # and macOS runners have it).
   ci:
+    if: github.event.action != 'ready_for_review'
     uses: lsdocs/.github/.github/workflows/ci.yml@main
     with:
       apt-packages: libclang-dev
@@ -37,11 +53,20 @@ jobs:
 
   # Each crate on its own rust-version (nur msrv installs the toolchains).
   msrv:
+    if: github.event.action != 'ready_for_review'
     uses: lsdocs/.github/.github/workflows/msrv.yml@main
     permissions:
       contents: read
 
-  deny:
-    uses: lsdocs/.github/.github/workflows/deny.yml@main
+  # The release PR, once marked ready for review: a dry run of tag.yml's
+  # builds, every target. Its artifacts are not used.
+  build-bin:
+    if: >-
+      github.event_name == 'pull_request'
+      && startsWith(github.head_ref, 'release-plz-')
+      && !github.event.pull_request.draft
+    uses: lsdocs/.github/.github/workflows/build-bin.yml@main
     permissions:
       contents: read
+    with:
+      package: lsdocs
