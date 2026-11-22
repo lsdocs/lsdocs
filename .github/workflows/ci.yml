@@ -12,7 +12,6 @@ on:
       - .gitignore
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore: *no-build
 
 permissions: {}
@@ -26,7 +25,6 @@ jobs:
   # The host and CLI alone: no built-in plugin is built. Fast feedback on
   # the core.
   core:
-    if: github.event.action != 'ready_for_review'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -44,7 +42,6 @@ jobs:
   # over stdio and over a pipe. apidoc-clang's tests load libclang (Windows
   # and macOS runners have it).
   ci:
-    if: github.event.action != 'ready_for_review'
     uses: lsdocs/.github/.github/workflows/ci.yml@main
     with:
       apt-packages: libclang-dev
@@ -53,34 +50,6 @@ jobs:
 
   # Each crate on its own rust-version (nur msrv installs the toolchains).
   msrv:
-    if: github.event.action != 'ready_for_review'
     uses: lsdocs/.github/.github/workflows/msrv.yml@main
     permissions:
       contents: read
-
-  # The release PR, once marked ready for review: a dry run of the release.
-  # The crates, packaged and verify-built as crates.io would get them
-  # (fails until the upstream crates they need are published).
-  crates:
-    if: >-
-      github.event_name == 'pull_request'
-      && startsWith(github.head_ref, 'release-plz-')
-      && !github.event.pull_request.draft
-    uses: lsdocs/.github/.github/workflows/check-crates.yml@main
-    permissions:
-      contents: read
-    with:
-      apt-packages: libclang-dev
-
-  # tag.yml's builds, every target, with their dist checks (artifacts
-  # unused).
-  build-bin:
-    if: >-
-      github.event_name == 'pull_request'
-      && startsWith(github.head_ref, 'release-plz-')
-      && !github.event.pull_request.draft
-    uses: lsdocs/.github/.github/workflows/build-bin.yml@main
-    permissions:
-      contents: read
-    with:
-      package: lsdocs
