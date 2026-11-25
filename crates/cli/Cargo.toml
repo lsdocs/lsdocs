@@ -29,6 +29,7 @@ pkg-fmt = "zip"
 
 [dependencies]
 clap.workspace = true
+crossterm.workspace = true
 lsdocs-config.workspace = true
 lsdocs-host.workspace = true
 lsdocs-parser-markdown = { workspace = true, optional = true }
@@ -48,6 +49,9 @@ lsdocs-transform-toc = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "signal", "sync", "time", "fs"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+
+[target.'cfg(unix)'.dependencies]
+rustix.workspace = true
 
 [features]
 # Every builtin is on by default. The API documentation builtins

@@ -839,6 +839,10 @@ core's (host, CLI) and the organization's.
       once instead (an open decision, below).
 - [ ] No restart policy: a plugin that fails to start, or dies, fails the
       build.
+- [ ] `lsdocs serve`: a status area pinned below the log (ratatui's inline
+      viewport): the address, the last build's result, progress within a
+      phase (plugins' `$/progress` notifications are logged at debug level
+      now) and the keys.
 - Node.js binding: context events arriving late: moved to
   [lsdocs-plugin-sdk](https://github.com/lsdocs/lsdocs-plugin-sdk).
 

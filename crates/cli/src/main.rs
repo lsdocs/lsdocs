@@ -6,8 +6,8 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 use lsdocs_config::{Config, Overrides};
 use lsdocs_host::{BuildOptions, Builtins};
-use tracing_subscriber::EnvFilter;
-
+mod keys;
+mod log;
 mod serve;
 
 /// Build documentation sites with language-agnostic plugins.
@@ -17,9 +17,14 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
 
-    /// Show more detail (`-v` info, `-vv` debug). `LSDOCS_LOG` overrides.
+    /// Show more detail (`-v` debug, `-vv` trace). `LSDOCS_LOG` overrides
+    /// `-v` and `-q`.
     #[arg(short, long, action = clap::ArgAction::Count, global = true)]
     verbose: u8,
+
+    /// Show only warnings and errors, not progress.
+    #[arg(short, long, global = true, conflicts_with = "verbose")]
+    quiet: bool,
 
     /// Log every protocol message exchanged with plugins, as JSON.
     #[arg(long, global = true)]
@@ -127,7 +132,16 @@ fn builtins() -> Builtins {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    init_logging(cli.verbose, cli.trace_rpc);
+    log::init(log::Verbosity {
+        verbose: cli.verbose,
+        quiet: cli.quiet,
+        trace_rpc: cli.trace_rpc,
+        // A plugin process's stderr is the host's log: only problems.
+        default: match cli.command {
+            Commands::Plugin { .. } => "warn",
+            _ => "info",
+        },
+    });
     let runtime = match tokio::runtime::Runtime::new() {
         Ok(rt) => rt,
         Err(e) => {
@@ -184,28 +198,6 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
-}
-
-fn init_logging(verbose: u8, trace_rpc: bool) {
-    let filter = EnvFilter::try_from_env("LSDOCS_LOG").unwrap_or_else(|_| {
-        let level = match verbose {
-            0 => "warn",
-            1 => "info",
-            _ => "debug",
-        };
-        let mut filter = EnvFilter::new(level);
-        if trace_rpc
-            && let Ok(directive) = format!("{}=trace", lsdocs_plugin_sdk::TRACE_TARGET).parse()
-        {
-            filter = filter.add_directive(directive);
-        }
-        filter
-    });
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_writer(std::io::stderr)
-        .with_target(false)
-        .init();
 }
 
 /// Reads the config file, then applies `LSDOCS_*` variables and `cli`.
