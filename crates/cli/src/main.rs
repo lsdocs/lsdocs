@@ -99,10 +99,13 @@ fn builtins() -> Builtins {
     let builtins = builtins.with("apidoc-rust", lsdocs_apidoc_rust::plugin);
     #[cfg(feature = "apidoc-typescript")]
     let builtins = builtins.with("apidoc-typescript", lsdocs_apidoc_typescript::plugin);
-    #[cfg(feature = "parser-md-vanilla")]
-    let builtins = builtins.with("parser-md-vanilla", lsdocs_parser_markdown::vanilla::plugin);
     #[cfg(feature = "parser-myst")]
     let builtins = builtins.with("parser-myst", lsdocs_parser_markdown::myst::plugin);
+    #[cfg(feature = "parser-pulldown-cmark")]
+    let builtins = builtins.with(
+        "parser-pulldown-cmark",
+        lsdocs_parser_markdown::pulldown_cmark::plugin,
+    );
     #[cfg(feature = "parser-rst")]
     let builtins = builtins.with("parser-rst", lsdocs_parser_rst::plugin);
     #[cfg(feature = "sphinx-addons")]
@@ -344,8 +347,8 @@ mod tests {
         feature = "apidoc-rust",
         feature = "apidoc-typescript",
         feature = "extras",
-        feature = "parser-md-vanilla",
         feature = "parser-myst",
+        feature = "parser-pulldown-cmark",
         feature = "parser-rst",
         feature = "render-html",
         feature = "sphinx-addons",
@@ -364,8 +367,8 @@ mod tests {
                 "apidoc-rust",
                 "apidoc-typescript",
                 "extras",
-                "parser-md-vanilla",
                 "parser-myst",
+                "parser-pulldown-cmark",
                 "parser-rst",
                 "render-html",
                 "sphinx-addons",
@@ -385,8 +388,8 @@ mod tests {
             feature = "apidoc-rust",
             feature = "apidoc-typescript",
             feature = "extras",
-            feature = "parser-md-vanilla",
             feature = "parser-myst",
+            feature = "parser-pulldown-cmark",
             feature = "parser-rst",
             feature = "render-html",
             feature = "sphinx-addons",

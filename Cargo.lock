@@ -903,7 +903,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-doctree"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-doctree?branch=main#0152a847f93ba16d417ab624b0aaa7c559754d22"
+source = "git+https://github.com/lsdocs/lsdocs-doctree?branch=main#f99b645c50b07c14a981189945a642a5dd7473ed"
 dependencies = [
  "serde",
  "serde_json",
@@ -938,7 +938,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-parser-markdown"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-markdown?branch=feat%2Fmarkdown-dialects#2cd7d8afe4c807bbeaec7118683a0e71a6efa73b"
+source = "git+https://github.com/lsdocs/lsdocs-markdown?branch=feat%2Fmarkdown-dialects#14f4b4578a081ab8c0463dca775e5853a49acddd"
 dependencies = [
  "lsdocs-parser-myst",
  "lsdocs-plugin-sdk",
@@ -950,7 +950,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-parser-myst"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-markdown?branch=feat%2Fmarkdown-dialects#2cd7d8afe4c807bbeaec7118683a0e71a6efa73b"
+source = "git+https://github.com/lsdocs/lsdocs-markdown?branch=feat%2Fmarkdown-dialects#14f4b4578a081ab8c0463dca775e5853a49acddd"
 dependencies = [
  "lsdocs-plugin-sdk",
  "pulldown-cmark",
@@ -972,7 +972,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-plugin-sdk"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-plugin-sdk?branch=main#16e62f50efb2750b219e733f0436f5edb6b194bb"
+source = "git+https://github.com/lsdocs/lsdocs-plugin-sdk?branch=main#d56cc37adfe37145cbd803d555b12dd6e0345e74"
 dependencies = [
  "lsdocs-protocol",
  "lsdocs-rpc",
@@ -985,7 +985,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-protocol"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-protocol?branch=main#1d9da41dfa2b3c2c625a58f587817d538118bccc"
+source = "git+https://github.com/lsdocs/lsdocs-protocol?branch=main#2fe557763bc23d603afa32ab2fae3c6f7e5a1135"
 dependencies = [
  "lsdocs-doctree",
  "rmp-serde",
@@ -1009,7 +1009,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-rpc"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-plugin-sdk?branch=main#16e62f50efb2750b219e733f0436f5edb6b194bb"
+source = "git+https://github.com/lsdocs/lsdocs-plugin-sdk?branch=main#d56cc37adfe37145cbd803d555b12dd6e0345e74"
 dependencies = [
  "bytes",
  "futures-util",

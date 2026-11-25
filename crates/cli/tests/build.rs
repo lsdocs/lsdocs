@@ -376,7 +376,7 @@ fn config_errors_are_reported() {
     assert!(!output.status.success());
     let err = stderr(&output);
     assert!(
-        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: apidoc-c, apidoc-cpp, apidoc-python, apidoc-rust, apidoc-typescript, extras, parser-md-vanilla, parser-myst, parser-rst, render-html, sphinx-addons, transform-highlight, transform-links, transform-nav, transform-toc)"),
+        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: apidoc-c, apidoc-cpp, apidoc-python, apidoc-rust, apidoc-typescript, extras, parser-myst, parser-pulldown-cmark, parser-rst, render-html, sphinx-addons, transform-highlight, transform-links, transform-nav, transform-toc)"),
         "{err}"
     );
 
