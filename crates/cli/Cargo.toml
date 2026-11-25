@@ -59,7 +59,8 @@ default = [
     "apidoc-rust",
     "apidoc-typescript",
     "extras",
-    "parser-markdown",
+    "parser-md-vanilla",
+    "parser-myst",
     "parser-rst",
     "render-html",
     "sphinx-addons",
@@ -71,7 +72,8 @@ default = [
 # Each built-in plugin, named as `builtin = "<name>"` names it. Without
 # them lsdocs builds and its unit tests run with no plugins at all.
 extras = ["dep:lsdocs-extras-plugin"]
-parser-markdown = ["dep:lsdocs-parser-markdown"]
+parser-md-vanilla = ["dep:lsdocs-parser-markdown", "lsdocs-parser-markdown/md-vanilla"]
+parser-myst = ["dep:lsdocs-parser-markdown", "lsdocs-parser-markdown/myst"]
 parser-rst = ["dep:lsdocs-parser-rst"]
 render-html = ["dep:lsdocs-render-html"]
 sphinx-addons = ["dep:lsdocs-sphinx-addons"]

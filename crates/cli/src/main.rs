@@ -81,7 +81,7 @@ enum Commands {
     /// out-of-process plugin. Used for testing.
     #[command(hide = true)]
     Plugin {
-        /// Builtin name, e.g. `parser-markdown`.
+        /// Builtin name, e.g. `parser-myst`.
         name: String,
     },
 }
@@ -99,8 +99,10 @@ fn builtins() -> Builtins {
     let builtins = builtins.with("apidoc-rust", lsdocs_apidoc_rust::plugin);
     #[cfg(feature = "apidoc-typescript")]
     let builtins = builtins.with("apidoc-typescript", lsdocs_apidoc_typescript::plugin);
-    #[cfg(feature = "parser-markdown")]
-    let builtins = builtins.with("parser-markdown", lsdocs_parser_markdown::plugin);
+    #[cfg(feature = "parser-md-vanilla")]
+    let builtins = builtins.with("parser-md-vanilla", lsdocs_parser_markdown::vanilla::plugin);
+    #[cfg(feature = "parser-myst")]
+    let builtins = builtins.with("parser-myst", lsdocs_parser_markdown::myst::plugin);
     #[cfg(feature = "parser-rst")]
     let builtins = builtins.with("parser-rst", lsdocs_parser_rst::plugin);
     #[cfg(feature = "sphinx-addons")]
@@ -258,7 +260,7 @@ title = "My Docs"
 
 [[plugins]]
 name = "markdown"
-builtin = "parser-markdown"
+builtin = "parser-myst"
 
 [[plugins]]
 name = "rst"
@@ -342,7 +344,8 @@ mod tests {
         feature = "apidoc-rust",
         feature = "apidoc-typescript",
         feature = "extras",
-        feature = "parser-markdown",
+        feature = "parser-md-vanilla",
+        feature = "parser-myst",
         feature = "parser-rst",
         feature = "render-html",
         feature = "sphinx-addons",
@@ -361,7 +364,8 @@ mod tests {
                 "apidoc-rust",
                 "apidoc-typescript",
                 "extras",
-                "parser-markdown",
+                "parser-md-vanilla",
+                "parser-myst",
                 "parser-rst",
                 "render-html",
                 "sphinx-addons",
@@ -381,7 +385,8 @@ mod tests {
             feature = "apidoc-rust",
             feature = "apidoc-typescript",
             feature = "extras",
-            feature = "parser-markdown",
+            feature = "parser-md-vanilla",
+            feature = "parser-myst",
             feature = "parser-rst",
             feature = "render-html",
             feature = "sphinx-addons",

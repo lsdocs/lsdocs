@@ -5,7 +5,7 @@
 // These tests build sites with the built-in plugins.
 #![cfg(all(
     feature = "extras",
-    feature = "parser-markdown",
+    feature = "parser-myst",
     feature = "parser-rst",
     feature = "render-html",
     feature = "sphinx-addons",
@@ -50,7 +50,7 @@ fn start() -> Server {
     let _ = std::fs::remove_dir_all(&dir);
     write(
         &dir.join("lsdocs.toml"),
-        "[site]\ntitle = \"Served\"\n\n[[plugins]]\nname = \"markdown\"\nbuiltin = \"parser-markdown\"\n\n\
+        "[site]\ntitle = \"Served\"\n\n[[plugins]]\nname = \"markdown\"\nbuiltin = \"parser-myst\"\n\n\
          [[plugins]]\nname = \"links\"\nbuiltin = \"transform-links\"\n\n\
          [[plugins]]\nname = \"html\"\nbuiltin = \"render-html\"\n",
     );

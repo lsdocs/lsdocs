@@ -817,7 +817,7 @@ and TODO.
 | lsdocs-protocol | `config`, `protocol`, the spec, schemas and fixtures |
 | lsdocs-plugin-sdk | `rpc`, the Rust SDK, `plugin-sdk-bindings`, the Python and Node.js SDKs |
 | lsdocs-rst | `lsdocs-rst`, `parser-rst`, its Python and Node.js bindings |
-| lsdocs-markdown | `parser-markdown` |
+| lsdocs-markdown | `parser-md-vanilla`, `parser-myst` (one per Markdown dialect) |
 | lsdocs-apidoc | the API documentation framework |
 | lsdocs-apidoc-python, -typescript, -rust, -clang | the language packages |
 | lsdocs-sphinx-addons, lsdocs-extras, lsdocs-render-html, lsdocs-transform-toc, -links, -nav, -highlight | one plugin each |

@@ -13,7 +13,7 @@ other plugins are the organization's other repositories
 Documentation: https://lsdocs.github.io.
 
 The built-in plugins are default features of the `lsdocs` crate, one per
-builtin (`parser-markdown`, `render-html`, `apidoc-python`, ...); without
+builtin (`parser-myst`, `render-html`, `apidoc-python`, ...); without
 them (`--no-default-features`) lsdocs builds with none.
 
 ## Known limitations
