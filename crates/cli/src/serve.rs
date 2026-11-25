@@ -13,6 +13,9 @@
 //!   in the output directory, for local development only. HTML responses
 //!   get a small script that listens on [`RELOAD_PATH`] (server-sent
 //!   events) and reloads the page after a rebuild changes any output.
+//! - **Keys** (in a terminal, see [`crate::keys`]): `r` restarts the
+//!   plugins and rebuilds, reloading open pages; `d` switches debug output;
+//!   `h` lists the keys; `q` quits.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::SocketAddr;
@@ -24,6 +27,9 @@ use lsdocs_host::{BuildOptions, BuildReport, Builtins, Session};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
+
+use crate::keys::{self, Key, Keys};
+use crate::log;
 
 /// How often the site directory is checked for changes.
 pub const POLL: Duration = Duration::from_millis(250);
@@ -65,60 +71,126 @@ pub async fn serve(
     let addr = listener.local_addr().map_err(|e| e.to_string())?;
     let (reload, _) = broadcast::channel(16);
     tokio::spawn(http(listener, output_dir.clone(), reload.clone()));
+    let mut keys = Keys::start();
+    // Printed, not logged: `--quiet` still shows where the site is.
     eprintln!(
-        "serving {} at http://{addr}/ (Ctrl+C to stop)",
-        output_dir.display()
+        "serving {} at http://{addr}/ ({})",
+        output_dir.display(),
+        if keys.is_some() {
+            "press h for help, q to quit"
+        } else {
+            "Ctrl+C to stop"
+        }
     );
 
-    let mut watched = Snapshot::take(
-        &root,
-        &ignored(&root, session.config()),
-        session.dependencies(),
-    );
+    let mut watched = snapshot(&root, &session);
     let config_dir = lsdocs_host::config_dir(&root);
     let mut config_state = ConfigState::take(config_path, &config_dir);
     loop {
-        tokio::select! {
+        let key = tokio::select! {
             _ = tokio::signal::ctrl_c() => break,
-            () = tokio::time::sleep(POLL) => {}
-        }
-        let ignore = ignored(&root, session.config());
-        let now = Snapshot::take(&root, &ignore, session.dependencies());
-        if now == watched && ConfigState::take(config_path, &config_dir) == config_state {
-            continue;
-        }
-        // Let a burst of saves settle before rebuilding.
-        tokio::time::sleep(POLL).await;
-        watched = Snapshot::take(&root, &ignore, session.dependencies());
-        let config_now = ConfigState::take(config_path, &config_dir);
-        let changed = if config_now != config_state {
-            config_state = config_now;
-            eprintln!("config changed; restarting plugins");
-            match load() {
-                Ok(config) => match Session::start(config, &root, builtins, &options.build).await {
-                    Ok(new) => {
-                        std::mem::replace(&mut session, new).stop().await;
-                        rebuild(&mut session).await
-                    }
-                    Err(e) => {
-                        eprintln!("error: {e}");
-                        false
-                    }
-                },
-                Err(e) => {
-                    eprintln!("error: {e}");
-                    false
+            key = next_key(&mut keys) => key,
+            () = tokio::time::sleep(POLL) => None,
+        };
+        let changed = match key {
+            Some(Key::Quit) => break,
+            Some(Key::Help) => {
+                eprint!("{}", keys::help(log::debug_on()));
+                continue;
+            }
+            Some(Key::Debug) => {
+                let on = log::toggle_debug();
+                eprintln!("debug output {}", if on { "on" } else { "off" });
+                continue;
+            }
+            Some(Key::Rebuild) => {
+                tracing::info!("restarting plugins");
+                watched = snapshot(&root, &session);
+                config_state = ConfigState::take(config_path, &config_dir);
+                // Reload pages even if no output changed: the reader
+                // asked for it.
+                restart(&mut session, load, &root, builtins, options).await;
+                true
+            }
+            None => {
+                if snapshot(&root, &session) == watched
+                    && ConfigState::take(config_path, &config_dir) == config_state
+                {
+                    continue;
+                }
+                // Let a burst of saves settle before rebuilding. Taken
+                // before building, so saves during the build rebuild again.
+                tokio::time::sleep(POLL).await;
+                watched = snapshot(&root, &session);
+                let config_now = ConfigState::take(config_path, &config_dir);
+                if config_now == config_state {
+                    rebuild(&mut session).await
+                } else {
+                    config_state = config_now;
+                    tracing::info!("config changed; restarting plugins");
+                    restart(&mut session, load, &root, builtins, options).await
                 }
             }
-        } else {
-            rebuild(&mut session).await
         };
         if changed {
             let _ = reload.send(());
         }
     }
+    drop(keys);
     session.stop().await;
     Ok(())
+}
+
+/// The watched files' state, for `session`.
+fn snapshot(root: &Path, session: &Session) -> Snapshot {
+    Snapshot::take(
+        root,
+        &ignored(root, session.config()),
+        session.dependencies(),
+    )
+}
+
+/// The next key command, or never if keys are not read (any more).
+async fn next_key(keys: &mut Option<Keys>) -> Option<Key> {
+    let Some(reader) = keys else {
+        return std::future::pending().await;
+    };
+    match reader.next().await {
+        Some(key) => Some(key),
+        None => {
+            // The reader stopped; restore the terminal and stop asking.
+            *keys = None;
+            std::future::pending().await
+        }
+    }
+}
+
+/// Loads the config, starts a new session with it and builds; on success
+/// the old session is stopped. Returns whether any output changed.
+async fn restart(
+    session: &mut Session,
+    load: impl Fn() -> Result<Config, String>,
+    root: &Path,
+    builtins: &Builtins,
+    options: &ServeOptions,
+) -> bool {
+    let config = match load() {
+        Ok(config) => config,
+        Err(e) => {
+            tracing::error!("{e}");
+            return false;
+        }
+    };
+    match Session::start(config, root, builtins, &options.build).await {
+        Ok(new) => {
+            std::mem::replace(session, new).stop().await;
+            rebuild(session).await
+        }
+        Err(e) => {
+            tracing::error!("{e}");
+            false
+        }
+    }
 }
 
 /// Builds and reports; returns whether any output changed.
@@ -127,7 +199,7 @@ async fn rebuild(session: &mut Session) -> bool {
     match session.build().await {
         Ok(report) => {
             print_report(&report);
-            eprintln!(
+            tracing::info!(
                 "rebuilt in {} ms: {} file(s) changed{}",
                 started.elapsed().as_millis(),
                 report.changed.len(),
@@ -139,7 +211,7 @@ async fn rebuild(session: &mut Session) -> bool {
             !report.changed.is_empty()
         }
         Err(e) => {
-            eprintln!("error: {e}");
+            tracing::error!("{e}");
             false
         }
     }

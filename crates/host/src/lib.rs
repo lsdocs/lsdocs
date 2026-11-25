@@ -257,6 +257,34 @@ impl BuildReport {
     }
 }
 
+/// Times a phase of the pipeline: logs its start at info level, for
+/// progress at the default verbosity, and its duration at debug level when
+/// dropped.
+struct Phase {
+    name: &'static str,
+    started: std::time::Instant,
+}
+
+impl Phase {
+    fn start(name: &'static str, what: fmt::Arguments<'_>) -> Self {
+        tracing::info!("{name}: {what}");
+        Self {
+            name,
+            started: std::time::Instant::now(),
+        }
+    }
+}
+
+impl Drop for Phase {
+    fn drop(&mut self) {
+        tracing::debug!(
+            "{}: done in {} ms",
+            self.name,
+            self.started.elapsed().as_millis()
+        );
+    }
+}
+
 /// What parsing one file produced.
 enum Parsed {
     /// The file is not UTF-8 text.
@@ -480,6 +508,7 @@ async fn start_plugins(
     events: &Events,
 ) -> Result<Vec<Arc<PluginClient>>, HostError> {
     let mut plugins = Vec::with_capacity(config.plugins.len());
+    let _phase = Phase::start("start", format_args!("{} plugin(s)", config.plugins.len()));
     for entry in &config.plugins {
         match PluginClient::start(entry, init, root, builtins, events).await {
             Ok(plugin) => plugins.push(Arc::new(plugin)),
@@ -543,6 +572,10 @@ async fn run_pipeline(
     }
     let syntax_key = serde_json::to_vec(&syntax).unwrap_or_default();
     let syntax = Arc::new(syntax);
+    let phase = Phase::start(
+        "parse",
+        format_args!("{} document(s), {} asset(s)", to_parse.len(), assets.len()),
+    );
     let parsed = in_parallel(to_parse, {
         let source_dir = source_dir.clone();
         let cache = cache.clone();
@@ -569,8 +602,10 @@ async fn run_pipeline(
                 if let (Some(cache), Some(key)) = (&cache, &key)
                     && let Some(result) = cache.get::<ParseResult>(key)
                 {
+                    tracing::trace!("parse: {source} (cached)");
                     return Ok(Parsed::Document(source, text, result));
                 }
+                tracing::trace!("parse: {source}");
                 let result = parser
                     .parse(ParseParams {
                         source: source.clone(),
@@ -609,13 +644,24 @@ async fn run_pipeline(
     // Normalize: generated ids and link targets, the same for every parser.
     let problems = normalize::normalize(&mut documents);
     report.diagnostics.extend(problems);
+    drop(phase);
 
     // Transform, one transformer at a time; within a pass, documents in
     // parallel.
-    for plugin in plugins
+    let transformers: Vec<_> = plugins
         .iter()
         .filter(|p| p.capabilities.transform.is_some())
-    {
+        .collect();
+    let phase = Phase::start(
+        "transform",
+        format_args!(
+            "{} document(s) with {} plugin(s)",
+            documents.len(),
+            transformers.len()
+        ),
+    );
+    for plugin in transformers {
+        tracing::debug!("transform: plugin `{}`", plugin.name);
         let collects = plugin
             .capabilities
             .transform
@@ -739,8 +785,11 @@ async fn run_pipeline(
         }
     }
 
+    drop(phase);
+
     // Render, documents in parallel.
     let mut outputs: Vec<(String, Vec<u8>)> = Vec::new();
+    let phase = Phase::start("render", format_args!("{} document(s)", documents.len()));
     if !documents.is_empty() {
         let (renderer, render) = plugins
             .iter()
@@ -774,8 +823,10 @@ async fn run_pipeline(
                         format.as_bytes(),
                     );
                     if let Some(result) = cache::get(&cache, &key) {
+                        tracing::trace!("render: {source} (cached)");
                         return Ok((source, metadata, result));
                     }
+                    tracing::trace!("render: {source}");
                     let result = renderer.render(RenderParams { document, format }).await?;
                     cache::put(&cache, &key, &result, &[]);
                     Ok((source, metadata, result))
@@ -829,8 +880,14 @@ async fn run_pipeline(
         }
     }
 
+    drop(phase);
+
     // Write what changed, then delete what an earlier build of the session
     // wrote but this one did not.
+    let phase = Phase::start(
+        "write",
+        format_args!("{} file(s)", outputs.len() + assets.len()),
+    );
     let mut current = HashMap::new();
     for (rel, bytes) in outputs {
         if write_if_changed(&output_dir, &rel, &bytes, previous, &mut current)? {
@@ -861,6 +918,7 @@ async fn run_pipeline(
         }
     }
     *previous = current;
+    drop(phase);
     Ok(report)
 }
 

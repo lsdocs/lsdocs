@@ -572,3 +572,22 @@ fn api_pages_build_the_same_out_of_process() {
     assert_eq!(in_process, api_site(Some("stdio")), "stdio differs");
     assert_eq!(in_process, api_site(Some("pipe")), "pipe differs");
 }
+
+#[test]
+fn progress_is_logged_unless_quiet() {
+    let (_, output) = build_site("progress", None, &[]);
+    let log = stderr(&output);
+    for phase in ["start", "parse", "transform", "render", "write"] {
+        assert!(
+            log.contains(&format!("INFO {phase}: ")),
+            "no {phase} in:\n{log}"
+        );
+    }
+    // Not a terminal: no colors and, without `-v`, no times.
+    assert!(!log.contains('\x1b'), "{log}");
+
+    let (_, output) = build_site("quiet", None, &["--quiet"]);
+    let log = stderr(&output);
+    assert!(!log.contains("INFO"), "{log}");
+    assert!(log.contains("built 3 document(s)"), "{log}");
+}
