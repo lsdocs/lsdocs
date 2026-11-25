@@ -18,7 +18,8 @@ lsdocs-protocol = { git = "https://github.com/lsdocs/lsdocs-protocol", branch = 
 lsdocs-rpc = { git = "https://github.com/lsdocs/lsdocs-plugin-sdk", branch = "main", version = "0.1.0" }
 lsdocs-plugin-sdk = { git = "https://github.com/lsdocs/lsdocs-plugin-sdk", branch = "main", version = "0.1.0" }
 lsdocs-host = { path = "crates/host", version = "0.1.0" }
-lsdocs-parser-markdown = { git = "https://github.com/lsdocs/lsdocs-markdown", branch = "main", version = "0.1.0" }
+# Dialects are features; the cli crate enables one per builtin.
+lsdocs-parser-markdown = { git = "https://github.com/lsdocs/lsdocs-markdown", branch = "main", version = "0.1.0", default-features = false }
 lsdocs-parser-rst = { git = "https://github.com/lsdocs/lsdocs-rst", branch = "main", version = "0.1.0" }
 lsdocs-transform-toc = { git = "https://github.com/lsdocs/lsdocs-transform-toc", branch = "main", version = "0.1.0" }
 lsdocs-transform-highlight = { git = "https://github.com/lsdocs/lsdocs-transform-highlight", branch = "main", version = "0.1.0" }

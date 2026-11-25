@@ -6,7 +6,7 @@
 // These tests build sites with the built-in plugins.
 #![cfg(all(
     feature = "extras",
-    feature = "parser-markdown",
+    feature = "parser-myst",
     feature = "parser-rst",
     feature = "render-html",
     feature = "sphinx-addons",

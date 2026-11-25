@@ -8,7 +8,7 @@ base_url = "https://example.com/sample/"
 
 [[plugins]]
 name = "markdown"
-builtin = "parser-markdown"
+builtin = "parser-myst"
 
 [[plugins]]
 name = "rst"

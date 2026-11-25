@@ -8,7 +8,7 @@
 // These tests build sites with the built-in plugins.
 #![cfg(all(
     feature = "extras",
-    feature = "parser-markdown",
+    feature = "parser-myst",
     feature = "parser-rst",
     feature = "render-html",
     feature = "sphinx-addons",
@@ -26,7 +26,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 const LSDOCS: &str = env!("CARGO_BIN_EXE_lsdocs");
 const PLUGINS: [(&str, &str); 8] = [
-    ("markdown", "parser-markdown"),
+    ("markdown", "parser-myst"),
     ("sphinx", "sphinx-addons"),
     ("extras", "extras"),
     ("toc", "transform-toc"),
@@ -376,7 +376,7 @@ fn config_errors_are_reported() {
     assert!(!output.status.success());
     let err = stderr(&output);
     assert!(
-        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: apidoc-c, apidoc-cpp, apidoc-python, apidoc-rust, apidoc-typescript, extras, parser-markdown, parser-rst, render-html, sphinx-addons, transform-highlight, transform-links, transform-nav, transform-toc)"),
+        err.contains("plugin `x`: no builtin named `no-such-plugin` (available: apidoc-c, apidoc-cpp, apidoc-python, apidoc-rust, apidoc-typescript, extras, parser-myst, parser-pulldown-cmark, parser-rst, render-html, sphinx-addons, transform-highlight, transform-links, transform-nav, transform-toc)"),
         "{err}"
     );
 
@@ -412,7 +412,7 @@ fn config_file_changes_invalidate_cached_results() {
     let config_path = site.join("lsdocs.toml");
     write(
         &config_path,
-        "[[plugins]]\nname = \"markdown\"\nbuiltin = \"parser-markdown\"\n\n\
+        "[[plugins]]\nname = \"markdown\"\nbuiltin = \"parser-myst\"\n\n\
          [[plugins]]\nname = \"toc\"\nbuiltin = \"transform-toc\"\n\n\
          [[plugins]]\nname = \"html\"\nbuiltin = \"render-html\"\n",
     );
@@ -524,7 +524,7 @@ fn api_site(transport: Option<&str>) -> BTreeMap<String, Vec<u8>> {
     );
     let mut config = String::new();
     for (name, builtin) in [
-        ("markdown", "parser-markdown"),
+        ("markdown", "parser-myst"),
         ("rst", "parser-rst"),
         ("python", "apidoc-python"),
         ("links", "transform-links"),
