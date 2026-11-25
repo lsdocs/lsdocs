@@ -12,6 +12,13 @@ other plugins are the organization's other repositories
 (https://github.com/lsdocs; the map is in ROADMAP.md, "The split").
 Documentation: https://lsdocs.github.io.
 
+Progress is logged to stderr, one line per pipeline phase; `-q` shows
+only warnings and errors, `-v` adds debug output and timings, `-vv`
+traces each document, and `LSDOCS_LOG` (an `EnvFilter` directive) replaces
+all three. In a terminal, `lsdocs serve` takes single-key commands: `r`
+restarts the plugins and rebuilds, `d` switches debug output on and off,
+`h` lists the keys, and `q` quits.
+
 The built-in plugins are default features of the `lsdocs` crate, one per
 builtin (`parser-markdown`, `render-html`, `apidoc-python`, ...); without
 them (`--no-default-features`) lsdocs builds with none.
@@ -21,7 +28,11 @@ them (`--no-default-features`) lsdocs builds with none.
 - No restart policy: a plugin that fails to start, or dies, fails the
   build.
 - `lsdocs serve` reloads a theme directory or its overrides only after a
-  restart (or a change under `.config/`).
+  restart: the `r` key, a change under `.config/`, or a new run.
+- `lsdocs serve` reads keys only when stdin and stderr are both a
+  terminal; otherwise Ctrl+C stops it, as before. Progress is logged one
+  line per phase (`start`, `parse`, `transform`, `render`, `write`), not
+  per document (`-vv` logs each document).
 
 ## TODO
 
