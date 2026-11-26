@@ -452,6 +452,43 @@ fn config_file_changes_invalidate_cached_results() {
     );
 }
 
+/// What the last build wrote and this one does not is deleted, across
+/// separate builds (from the output manifest), cache or no cache; other
+/// files in the output directory are left alone.
+#[test]
+fn later_builds_delete_what_earlier_ones_wrote() {
+    let site = temp_dir("prune");
+    write(&site.join("docs/a.md"), "# A\n");
+    write(&site.join("docs/b.md"), "# B\n");
+    write(&site.join("docs/img.svg"), "<svg/>");
+    let config_path = site.join("lsdocs.toml");
+    write(
+        &config_path,
+        "[[plugins]]\nname = \"markdown\"\nbuiltin = \"parser-myst\"\n\n\
+         [[plugins]]\nname = \"html\"\nbuiltin = \"render-html\"\n",
+    );
+    let config_arg = config_path.to_string_lossy().into_owned();
+    let build = |extra: &[&str]| {
+        let mut args = vec!["build", "--config", config_arg.as_str()];
+        args.extend_from_slice(extra);
+        let output = lsdocs(&args);
+        assert!(output.status.success(), "{}", stderr(&output));
+    };
+    let out = site.join("site");
+    build(&[]);
+    assert!(out.join("b.html").is_file() && out.join("img.svg").is_file());
+    write(&out.join("mine.txt"), "not lsdocs'");
+    std::fs::remove_file(site.join("docs/b.md")).unwrap();
+    build(&["--no-cache"]);
+    assert!(!out.join("b.html").exists());
+    std::fs::remove_file(site.join("docs/img.svg")).unwrap();
+    build(&[]);
+    let left = read_tree(&out);
+    let _ = std::fs::remove_dir_all(&site);
+    assert!(!left.contains_key("img.svg"));
+    assert!(left.contains_key("a.html") && left.contains_key("mine.txt"));
+}
+
 #[test]
 fn included_files_invalidate_cached_results() {
     let site = temp_dir("deps");

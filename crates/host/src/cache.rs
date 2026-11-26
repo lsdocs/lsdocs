@@ -11,7 +11,8 @@
 //! cache key, the site settings (but not the file list), the phase, and the
 //! request's input. Entries are MessagePack files named by their key in
 //! `.lsdocs-cache/` at the site root. After a build, entries it did not use
-//! are deleted, so the cache holds what the last build needed.
+//! are deleted, so the cache holds what the last build needed. Other files
+//! in the directory (the output manifest) are left alone.
 //!
 //! A result may list files it depends on (`dependencies`, such as included
 //! files); its entry records a digest of each (or that it was missing), and
@@ -193,13 +194,17 @@ impl Cache {
         let Ok(entries) = std::fs::read_dir(&self.dir) else {
             return;
         };
+        // Only entries: other files here (the output manifest) are not the
+        // cache's to delete.
         for entry in entries.flatten() {
             let path = entry.path();
+            if path.extension().is_none_or(|e| e != "msgpack") {
+                continue;
+            }
             let keep = path
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .is_some_and(|stem| used.contains(stem))
-                && path.extension().is_some_and(|e| e == "msgpack");
+                .is_some_and(|stem| used.contains(stem));
             if !keep {
                 let _ = std::fs::remove_file(&path);
             }
