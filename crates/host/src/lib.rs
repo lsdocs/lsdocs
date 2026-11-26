@@ -17,7 +17,9 @@
 //!    pass. A transformer only sees documents containing a node kind it
 //!    selects.
 //! 6. **Render** each document with the first renderer, in its first format.
-//! 7. **Write** rendered files and assets to the output directory.
+//! 7. **Write** rendered files and assets to the output directory, and
+//!    delete what the last build wrote and this one did not (see the
+//!    `manifest` module).
 //! 8. **Stop** every plugin.
 //!
 //! Problems with the site's content are returned as diagnostics in the
@@ -44,6 +46,7 @@ use lsdocs_protocol::{
 };
 
 mod cache;
+mod manifest;
 mod normalize;
 mod plugin;
 
@@ -364,6 +367,9 @@ pub struct Session {
     cache: Option<Arc<cache::Cache>>,
     /// Digests of the files the last build left in the output directory.
     outputs: HashMap<String, blake3::Hash>,
+    /// The files an earlier session's last build wrote (from the output
+    /// manifest), until a build of this session has pruned against them.
+    earlier: Vec<String>,
     /// The files the last build's results depended on.
     dependencies: std::collections::BTreeSet<PathBuf>,
 }
@@ -393,15 +399,16 @@ impl Session {
             .cache
             .then(|| Arc::new(cache::Cache::new(cache::dir(root), &init.site)));
         Ok(Self {
-            config,
             root: root.to_path_buf(),
             builtins: builtins.clone(),
             events,
             init,
             plugins,
             cache,
+            earlier: manifest::read(root, &root.join(&config.output_dir)),
             outputs: HashMap::new(),
             dependencies: std::collections::BTreeSet::new(),
+            config,
         })
     }
 
@@ -432,8 +439,17 @@ impl Session {
             &self.plugins,
             self.cache.clone(),
             &mut self.outputs,
+            &self.earlier,
         )
         .await;
+        if report.is_ok() {
+            self.earlier.clear();
+            manifest::write(
+                &self.root,
+                &self.root.join(&self.config.output_dir),
+                self.outputs.keys(),
+            );
+        }
         if let Ok(report) = &mut report
             && let Some(cache) = &self.cache
         {
@@ -543,6 +559,7 @@ async fn run_pipeline(
     plugins: &[Arc<PluginClient>],
     cache: Option<Arc<cache::Cache>>,
     previous: &mut HashMap<String, blake3::Hash>,
+    earlier: &[String],
 ) -> Result<BuildReport, HostError> {
     let mut report = BuildReport::default();
     let source_dir = root.join(&config.source_dir);
@@ -882,8 +899,8 @@ async fn run_pipeline(
 
     drop(phase);
 
-    // Write what changed, then delete what an earlier build of the session
-    // wrote but this one did not.
+    // Write what changed, then delete what the last build (of this session,
+    // or the one the output manifest records) wrote but this one did not.
     let phase = Phase::start(
         "write",
         format_args!("{} file(s)", outputs.len() + assets.len()),
@@ -906,9 +923,11 @@ async fn run_pipeline(
     }
     let mut stale: Vec<&String> = previous
         .keys()
+        .chain(earlier)
         .filter(|rel| !current.contains_key(*rel))
         .collect();
     stale.sort();
+    stale.dedup();
     for rel in stale {
         let path = output_dir.join(rel);
         match std::fs::remove_file(&path) {
@@ -968,7 +987,7 @@ fn add_diagnostics(report: &mut BuildReport, source: &str, diagnostics: Vec<Diag
 
 /// Whether a plugin-chosen output path stays inside the output directory:
 /// relative, `/`-separated, with no empty, `.` or `..` segments.
-fn is_safe_output_path(path: &str) -> bool {
+pub(crate) fn is_safe_output_path(path: &str) -> bool {
     !path.is_empty()
         && !path.contains(['\\', ':'])
         && path
