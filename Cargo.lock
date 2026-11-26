@@ -1183,7 +1183,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-protocol"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-protocol?branch=main#fdb93b6b77ef5a84cee27faf6992ab44ffbe28f7"
+source = "git+https://github.com/lsdocs/lsdocs-protocol?branch=main#03b81851bda44210f47ea5cd05e0f3c451d620ea"
 dependencies = [
  "lsdocs-doctree",
  "rmp-serde",
@@ -1195,7 +1195,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-render-html"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-render-html?branch=feat%2Fwatch-theme-files#b5346c082fc1d6b0b4b6f32dba5c673a0f65874f"
+source = "git+https://github.com/lsdocs/lsdocs-render-html?branch=main#8bfacdcf5e6fdf4e3dd12d9cd4baffcbf6a2b68e"
 dependencies = [
  "blake3",
  "lsdocs-plugin-sdk",
