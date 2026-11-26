@@ -6,7 +6,8 @@
 //!   within the document. Explicit ids are reserved first, so generated ids
 //!   never take them; an explicit id used twice is a `duplicate-id` warning.
 //! - Every link without a `target` whose URL is a relative path to a parsed
-//!   document, or a bare `#fragment`, gets a [`LinkTarget`].
+//!   document, or a bare `#fragment`, gets a [`LinkTarget`]. Links a
+//!   transformer adds get one too, after its apply pass ([`link_targets`]).
 
 use std::collections::{BTreeSet, HashSet};
 
@@ -29,16 +30,22 @@ pub(crate) fn normalize_among(
     let mut diagnostics = Vec::new();
     for doc in documents {
         assign_ids(doc, &mut diagnostics);
-        let source = doc.source.clone();
-        visit(&mut doc.children, &mut |node| {
-            if let Node::Link(link) = node
-                && link.target.is_none()
-            {
-                link.target = link_target(&link.url, &source, sources);
-            }
-        });
+        link_targets(doc, sources);
     }
     diagnostics
+}
+
+/// Gives every link in `doc` without a `target` the one its URL points
+/// to, among the site's documents `sources` (see [`link_target`]).
+pub(crate) fn link_targets(doc: &mut Document, sources: &BTreeSet<String>) {
+    let source = doc.source.clone();
+    visit(&mut doc.children, &mut |node| {
+        if let Node::Link(link) = node
+            && link.target.is_none()
+        {
+            link.target = link_target(&link.url, &source, sources);
+        }
+    });
 }
 
 /// The target of a link written as `url` in the document `from`, if it
@@ -320,5 +327,45 @@ mod tests {
                 None,
             ]
         );
+    }
+
+    /// After a transform, links without a target get one; links with one
+    /// (a label a transformer set, say) keep it.
+    #[test]
+    fn link_targets_fill_in_only_missing_targets() {
+        let label = Some(LinkTarget {
+            label: Some("intro".into()),
+            ..LinkTarget::default()
+        });
+        let mut doc = Document::new("a.md");
+        doc.children = vec![Node::Paragraph(Paragraph {
+            children: vec![
+                Node::Link(Link {
+                    url: "b.rst#x".into(),
+                    ..Link::default()
+                }),
+                Node::Link(Link {
+                    url: "#intro".into(),
+                    target: label.clone(),
+                    ..Link::default()
+                }),
+            ],
+            ..Paragraph::default()
+        })];
+        let sources = ["a.md".to_owned(), "b.rst".to_owned()].into();
+        link_targets(&mut doc, &sources);
+        let targets: Vec<_> = doc
+            .descendants()
+            .filter_map(|n| match n {
+                Node::Link(l) => Some(l.target.clone()),
+                _ => None,
+            })
+            .collect();
+        let resolved = Some(LinkTarget {
+            document: Some("b.rst".into()),
+            anchor: Some("x".into()),
+            label: None,
+        });
+        assert_eq!(targets, [resolved, label]);
     }
 }
