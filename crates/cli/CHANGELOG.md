@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/lsdocs/lsdocs/compare/lsdocs/v0.1.0...lsdocs/v0.2.0) - 2026-11-26
+
+### Added
+
+- *(serve)* restart the plugins when their settings files change ([#25](https://github.com/lsdocs/lsdocs/pull/25))
+- *(host)* prune what earlier builds wrote, across sessions ([#24](https://github.com/lsdocs/lsdocs/pull/24))
+- *(cli)* [**breaking**] a builtin per Markdown dialect (parser-pulldown-cmark, parser-myst) ([#21](https://github.com/lsdocs/lsdocs/pull/21))
+- *(cli)* log build progress and add key commands to serve ([#22](https://github.com/lsdocs/lsdocs/pull/22))
+
 ## [0.1.0](https://github.com/lsdocs/lsdocs/releases/tag/lsdocs/v0.1.0) - 2026-11-23
 
 ### Added
