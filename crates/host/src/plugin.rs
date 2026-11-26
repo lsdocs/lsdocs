@@ -1,7 +1,7 @@
 //! Starting, talking to and stopping plugins.
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{Arc, Mutex, PoisonError, Weak};
 use std::time::Duration;
@@ -209,6 +209,9 @@ pub(crate) struct PluginClient {
     /// A digest of the files it read its settings from (see
     /// `InitializeResult::config_files`), for cache keys.
     pub config_digest: Vec<u8>,
+    /// Those files (and directories), as paths: `lsdocs serve` restarts
+    /// the plugins when one changes.
+    pub config_files: Vec<PathBuf>,
     /// What it said it can do.
     pub capabilities: Capabilities,
     /// The `files` globs from the site config, if any.
@@ -351,6 +354,10 @@ impl PluginClient {
             version,
             plugin_name,
             config_digest: config_digest(Path::new(&init.config.dir), &config_files),
+            config_files: config_files
+                .iter()
+                .map(|f| Path::new(&init.config.dir).join(f))
+                .collect(),
             capabilities,
             files,
             permits: Semaphore::new(limit),

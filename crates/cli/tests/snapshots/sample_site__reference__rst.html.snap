@@ -8,7 +8,7 @@ expression: text
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>reStructuredText | lsdocs sample</title>
-<link rel="stylesheet" href="../_lsdocs/plain.7d73ecca.css">
+<link rel="stylesheet" href="../_lsdocs/plain.5b0548fc.css">
 </head>
 <body class="has-nav">
 <header><a href="../index.html">lsdocs sample</a></header>
@@ -72,7 +72,12 @@ core node kinds.</p>
 <tr><td>rst</td><td>html</td></tr>
 </table>
 </div>
-<div class="lsd-mermaid"></div>
+<div class="lsd-mermaid">
+<div class="lsd-admonition" data-kind="warning">
+<p class="lsd-admonition-title">Unknown doc tree node &quot;mermaid&quot;</p>
+<lsd-copy><figure class="lsd-code"><figcaption class="lsd-code-title">content</figcaption><pre><code>graph LR; rst --&gt; html</code></pre></figure></lsd-copy>
+</div>
+</div>
 </section>
 </section>
 

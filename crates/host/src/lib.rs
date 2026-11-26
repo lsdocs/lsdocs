@@ -470,6 +470,17 @@ impl Session {
         &self.dependencies
     }
 
+    /// The files (and directories) the plugins read their settings from
+    /// (see `InitializeResult::config_files`), such as a theme directory's
+    /// files: a change to one is a change of settings, which needs the
+    /// plugins restarted, as `lsdocs serve` does.
+    pub fn config_files(&self) -> std::collections::BTreeSet<PathBuf> {
+        self.plugins
+            .iter()
+            .flat_map(|p| p.config_files.iter().cloned())
+            .collect()
+    }
+
     /// The configuration the session builds.
     pub fn config(&self) -> &Config {
         &self.config
