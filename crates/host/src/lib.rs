@@ -803,6 +803,10 @@ async fn run_pipeline(
             }
         })
         .await;
+        // Links the transformer added (a button's, say) get targets, as
+        // parsed ones did.
+        let sources: std::collections::BTreeSet<String> =
+            documents.iter().map(|d| d.source.clone()).collect();
         for result in results {
             let (i, result) = result?;
             let source = std::mem::take(&mut documents[i].source);
@@ -810,6 +814,7 @@ async fn run_pipeline(
             add_dependencies(&mut report, root, &result.dependencies);
             documents[i] = result.document;
             documents[i].source = source;
+            normalize::link_targets(&mut documents[i], &sources);
         }
     }
 
