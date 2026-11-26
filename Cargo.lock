@@ -1101,7 +1101,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-doctree"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-doctree?branch=main#f99b645c50b07c14a981189945a642a5dd7473ed"
+source = "git+https://github.com/lsdocs/lsdocs-doctree?branch=main#9ee70f6ee7f5361ee692162c07738f43680b88fa"
 dependencies = [
  "serde",
  "serde_json",
@@ -1170,7 +1170,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-plugin-sdk"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-plugin-sdk?branch=main#d56cc37adfe37145cbd803d555b12dd6e0345e74"
+source = "git+https://github.com/lsdocs/lsdocs-plugin-sdk?branch=main#650cf58908f9d473c890ee8238a6ac037f30dafd"
 dependencies = [
  "lsdocs-protocol",
  "lsdocs-rpc",
@@ -1183,7 +1183,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-protocol"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-protocol?branch=main#2fe557763bc23d603afa32ab2fae3c6f7e5a1135"
+source = "git+https://github.com/lsdocs/lsdocs-protocol?branch=main#fdb93b6b77ef5a84cee27faf6992ab44ffbe28f7"
 dependencies = [
  "lsdocs-doctree",
  "rmp-serde",
@@ -1195,7 +1195,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-render-html"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-render-html?branch=main#eb931a320c91aeacbcef4e590afb9099b0188022"
+source = "git+https://github.com/lsdocs/lsdocs-render-html?branch=feat%2Fwatch-theme-files#b5346c082fc1d6b0b4b6f32dba5c673a0f65874f"
 dependencies = [
  "blake3",
  "lsdocs-plugin-sdk",
@@ -1207,7 +1207,7 @@ dependencies = [
 [[package]]
 name = "lsdocs-rpc"
 version = "0.1.0"
-source = "git+https://github.com/lsdocs/lsdocs-plugin-sdk?branch=main#d56cc37adfe37145cbd803d555b12dd6e0345e74"
+source = "git+https://github.com/lsdocs/lsdocs-plugin-sdk?branch=main#650cf58908f9d473c890ee8238a6ac037f30dafd"
 dependencies = [
  "bytes",
  "futures-util",

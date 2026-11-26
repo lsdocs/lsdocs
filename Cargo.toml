@@ -31,7 +31,7 @@ lsdocs-apidoc-clang = { git = "https://github.com/lsdocs/lsdocs-apidoc-clang", b
 lsdocs-sphinx-addons = { git = "https://github.com/lsdocs/lsdocs-sphinx-addons", branch = "main", version = "0.1.0" }
 lsdocs-extras-plugin = { git = "https://github.com/lsdocs/lsdocs-extras", branch = "main", version = "0.1.0" }
 lsdocs-transform-nav = { git = "https://github.com/lsdocs/lsdocs-transform-nav", branch = "main", version = "0.1.0" }
-lsdocs-render-html = { git = "https://github.com/lsdocs/lsdocs-render-html", branch = "main", version = "0.1.0" }
+lsdocs-render-html = { git = "https://github.com/lsdocs/lsdocs-render-html", branch = "feat/watch-theme-files", version = "0.1.0" }
 
 # Third-party crates.
 blake3 = { version = "1.8.7", default-features = false, features = ["std", "pure"] }
