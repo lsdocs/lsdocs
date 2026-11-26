@@ -7,8 +7,10 @@
 //!   arrive. The output directory, the cache and hidden directories are
 //!   ignored.
 //! - **Rebuilding** reuses one [`Session`], so plugins stay running and
-//!   cached results stay in memory. A change to the config file starts a
-//!   new session.
+//!   cached results stay in memory. A change to the config file, to a
+//!   plugin's settings under `.config/`, or to another file a plugin read
+//!   its settings from (its `config_files`, such as a theme directory's)
+//!   starts a new session.
 //! - **Serving** is a minimal HTTP/1.1 server for `GET` and `HEAD` of files
 //!   in the output directory, for local development only. HTML responses
 //!   get a small script that listens on [`RELOAD_PATH`] (server-sent
@@ -85,7 +87,7 @@ pub async fn serve(
 
     let mut watched = snapshot(&root, &session);
     let config_dir = lsdocs_host::config_dir(&root);
-    let mut config_state = ConfigState::take(config_path, &config_dir);
+    let mut config_state = ConfigState::take(config_path, &config_dir, &session);
     loop {
         let key = tokio::select! {
             _ = tokio::signal::ctrl_c() => break,
@@ -106,15 +108,17 @@ pub async fn serve(
             Some(Key::Rebuild) => {
                 tracing::info!("restarting plugins");
                 watched = snapshot(&root, &session);
-                config_state = ConfigState::take(config_path, &config_dir);
+                config_state = ConfigState::take(config_path, &config_dir, &session);
                 // Reload pages even if no output changed: the reader
                 // asked for it.
                 restart(&mut session, load, &root, builtins, options).await;
+                // The new plugins may read other files (a new template).
+                config_state.files = ConfigFiles::take(&session);
                 true
             }
             None => {
                 if snapshot(&root, &session) == watched
-                    && ConfigState::take(config_path, &config_dir) == config_state
+                    && ConfigState::take(config_path, &config_dir, &session) == config_state
                 {
                     continue;
                 }
@@ -122,13 +126,15 @@ pub async fn serve(
                 // before building, so saves during the build rebuild again.
                 tokio::time::sleep(POLL).await;
                 watched = snapshot(&root, &session);
-                let config_now = ConfigState::take(config_path, &config_dir);
+                let config_now = ConfigState::take(config_path, &config_dir, &session);
                 if config_now == config_state {
                     rebuild(&mut session).await
                 } else {
                     config_state = config_now;
                     tracing::info!("config changed; restarting plugins");
-                    restart(&mut session, load, &root, builtins, options).await
+                    let changed = restart(&mut session, load, &root, builtins, options).await;
+                    config_state.files = ConfigFiles::take(&session);
+                    changed
                 }
             }
         };
@@ -278,17 +284,46 @@ impl Snapshot {
     }
 }
 
-/// The site config and every plugin's settings under `.config/`: a change
-/// to either restarts the plugins, which read their settings at startup.
+/// The site config, every plugin's settings under `.config/`, and the
+/// other files (and directories) plugins read settings from, such as a
+/// theme directory's: a change to any restarts the plugins, which read
+/// their settings at startup.
 #[derive(Debug, PartialEq, Eq)]
-struct ConfigState(Option<(SystemTime, u64)>, Snapshot);
+struct ConfigState {
+    site: (Option<(SystemTime, u64)>, Snapshot),
+    files: ConfigFiles,
+}
+
+/// Stamps of the files (and directories) a session's plugins read their
+/// settings from. A directory's stamp changes as entries are added or
+/// removed.
+#[derive(Debug, PartialEq, Eq)]
+struct ConfigFiles(Vec<(PathBuf, Option<(SystemTime, u64)>)>);
+
+impl ConfigFiles {
+    fn take(session: &Session) -> Self {
+        Self(
+            session
+                .config_files()
+                .into_iter()
+                .map(|path| {
+                    let stamp = stamp(&path);
+                    (path, stamp)
+                })
+                .collect(),
+        )
+    }
+}
 
 impl ConfigState {
-    fn take(config_path: &Path, config_dir: &Path) -> Self {
-        Self(
-            stamp(config_path),
-            Snapshot::take(config_dir, &[], &BTreeSet::new()),
-        )
+    fn take(config_path: &Path, config_dir: &Path, session: &Session) -> Self {
+        Self {
+            site: (
+                stamp(config_path),
+                Snapshot::take(config_dir, &[], &BTreeSet::new()),
+            ),
+            files: ConfigFiles::take(session),
+        }
     }
 }
 

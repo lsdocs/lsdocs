@@ -1,6 +1,6 @@
 //! Drives `lsdocs serve` over real HTTP: pages are served with the reload
-//! script, and edits, new files and deleted files are rebuilt and announced
-//! on the reload stream.
+//! script, and edits, new files, deleted files, settings and theme files
+//! are rebuilt and announced on the reload stream.
 
 // These tests build sites with the built-in plugins.
 #![cfg(all(
@@ -200,4 +200,27 @@ fn serve_rebuilds_and_reloads() {
     reloads.next();
     let (_, body) = get(port, "/");
     assert!(!body.contains("class=\"lsd-anchor\""), "{body}");
+
+    // So does a file of a theme directory, which the renderer reports
+    // with its settings files: the theme is reloaded.
+    let page = server.dir.join("theme/templates/page.html");
+    write(&server.dir.join("theme/theme.toml"), "");
+    write(
+        &page,
+        "<html><body>Theme one. {{ content }}</body></html>\n",
+    );
+    write(
+        &server.dir.join(".config/lsdocs/html/settings.toml"),
+        "theme = \"theme\"\n",
+    );
+    reloads.next();
+    assert!(get(port, "/").1.contains("Theme one."));
+    settle();
+    write(
+        &page,
+        "<html><body>Theme two. {{ content }}</body></html>\n",
+    );
+    reloads.next();
+    let (_, body) = get(port, "/");
+    assert!(body.contains("Theme two."), "{body}");
 }
